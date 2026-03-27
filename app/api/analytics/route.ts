@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { adminDb, isAdminReady } from "@/lib/firebase-admin";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, Timestamp as ClientTimestamp } from "firebase/firestore";
 import { Timestamp } from "firebase-admin/firestore";
 import { AnalyticsEventInput } from "@/types";
 
@@ -15,12 +17,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Add event to Firestore
-    await adminDb.collection("analytics_events").add({
+    const eventData = {
       ...event,
       userAgent: request.headers.get("user-agent") || undefined,
-      timestamp: Timestamp.now(),
-    });
+    };
+
+    // Use admin SDK if available, otherwise client SDK
+    if (isAdminReady && adminDb) {
+      await adminDb.collection("analytics_events").add({
+        ...eventData,
+        timestamp: Timestamp.now(),
+      });
+    } else {
+      await addDoc(collection(db, "analytics_events"), {
+        ...eventData,
+        timestamp: ClientTimestamp.now(),
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
