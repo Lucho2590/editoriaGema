@@ -219,7 +219,7 @@ function StatCard({
 }: {
   label: string;
   value: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: React.ElementType;
 }) {
   return (
     <div className="bg-white rounded-lg border border-gema-gray-100 p-6">
