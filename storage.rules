@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return request.auth != null &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin == true;
+    }
+
+    // Cover images - public read, admin write
+    match /covers/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Book files (PDF/EPUB) - only authenticated via signed URLs
+    match /books/{bookId}/{fileName} {
+      allow read: if false; // Use signed URLs for access
+      allow write: if isAdmin();
+    }
+  }
+}

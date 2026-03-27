@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-editorial: "Playfair Display", Georgia, serif;
+    --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-gema-white text-gema-black antialiased;
+    font-feature-settings: "kern" 1, "liga" 1;
+  }
+
+  ::selection {
+    @apply bg-gema-black text-gema-white;
+  }
+
+  /* Smooth page transitions */
+  .page-transition {
+    animation: fadeIn 0.4s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@layer components {
+  /* Editorial section spacing */
+  .section {
+    @apply py-section px-gutter;
+  }
+
+  .section-sm {
+    @apply py-section-sm px-gutter;
+  }
+
+  /* Container */
+  .container-content {
+    @apply max-w-content mx-auto px-gutter;
+  }
+
+  /* Prose styling for long-form content */
+  .prose-editorial {
+    @apply text-body-lg leading-relaxed text-gema-gray-700;
+  }
+
+  .prose-editorial p {
+    @apply mb-6;
+  }
+
+  .prose-editorial h2 {
+    @apply font-serif text-heading-xl text-gema-black mt-12 mb-6;
+  }
+
+  .prose-editorial h3 {
+    @apply font-serif text-heading-lg text-gema-black mt-8 mb-4;
+  }
+
+  .prose-editorial blockquote {
+    @apply border-l-2 border-gema-gray-200 pl-6 my-8 italic text-gema-gray-600;
+  }
+
+  .prose-editorial a {
+    @apply text-gema-black underline underline-offset-4 hover:text-gema-gray-600 transition-colors;
+  }
+
+  .prose-editorial ul,
+  .prose-editorial ol {
+    @apply mb-6 pl-6;
+  }
+
+  .prose-editorial li {
+    @apply mb-2;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar but allow scrolling */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Text balance for headings */
+  .text-balance {
+    text-wrap: balance;
+  }
+}

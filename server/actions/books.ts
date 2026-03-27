@@ -1,0 +1,266 @@
+"use server";
+
+import { adminDb, isAdminReady } from "@/lib/firebase-admin";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  getDoc,
+  doc,
+  query,
+  where,
+  orderBy,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  Timestamp as ClientTimestamp
+} from "firebase/firestore";
+import { Timestamp } from "firebase-admin/firestore";
+import { Book, BookInput } from "@/types";
+import { slugify } from "@/lib/utils";
+
+const BOOKS_COLLECTION = "books";
+
+/**
+ * Get all published books
+ */
+export async function getBooks(): Promise<Book[]> {
+  try {
+    // Use client SDK if admin is not configured
+    if (!isAdminReady || !adminDb) {
+      const q = query(
+        collection(db, BOOKS_COLLECTION),
+        where("published", "==", true),
+        orderBy("createdAt", "desc")
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+    }
+
+    const snapshot = await adminDb
+      .collection(BOOKS_COLLECTION)
+      .where("published", "==", true)
+      .orderBy("createdAt", "desc")
+      .get();
+
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+  } catch (error) {
+    console.error("Failed to get books:", error);
+    return [];
+  }
+}
+
+/**
+ * Get all books (including unpublished) for admin
+ */
+export async function getAllBooks(): Promise<Book[]> {
+  try {
+    if (!isAdminReady || !adminDb) {
+      const q = query(collection(db, BOOKS_COLLECTION), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+    }
+
+    const snapshot = await adminDb.collection(BOOKS_COLLECTION).orderBy("createdAt", "desc").get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+  } catch (error) {
+    console.error("Failed to get all books:", error);
+    return [];
+  }
+}
+
+/**
+ * Get featured books
+ */
+export async function getFeaturedBooks(): Promise<Book[]> {
+  try {
+    if (!isAdminReady || !adminDb) {
+      const q = query(
+        collection(db, BOOKS_COLLECTION),
+        where("published", "==", true),
+        where("featured", "==", true)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+    }
+
+    const snapshot = await adminDb
+      .collection(BOOKS_COLLECTION)
+      .where("published", "==", true)
+      .where("featured", "==", true)
+      .limit(6)
+      .get();
+
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+  } catch (error) {
+    console.error("Failed to get featured books:", error);
+    return [];
+  }
+}
+
+/**
+ * Get book by slug
+ */
+export async function getBookBySlug(slug: string): Promise<Book | null> {
+  try {
+    if (!isAdminReady || !adminDb) {
+      const q = query(collection(db, BOOKS_COLLECTION), where("slug", "==", slug));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) return null;
+      const docSnap = snapshot.docs[0];
+      return { id: docSnap.id, ...docSnap.data() } as Book;
+    }
+
+    const snapshot = await adminDb.collection(BOOKS_COLLECTION).where("slug", "==", slug).limit(1).get();
+    if (snapshot.empty) return null;
+    const docSnap = snapshot.docs[0];
+    return { id: docSnap.id, ...docSnap.data() } as Book;
+  } catch (error) {
+    console.error("Failed to get book by slug:", error);
+    return null;
+  }
+}
+
+/**
+ * Get book by ID
+ */
+export async function getBookById(id: string): Promise<Book | null> {
+  try {
+    if (!isAdminReady || !adminDb) {
+      const docSnap = await getDoc(doc(db, BOOKS_COLLECTION, id));
+      if (!docSnap.exists()) return null;
+      return { id: docSnap.id, ...docSnap.data() } as Book;
+    }
+
+    const docSnap = await adminDb.collection(BOOKS_COLLECTION).doc(id).get();
+    if (!docSnap.exists) return null;
+    return { id: docSnap.id, ...docSnap.data() } as Book;
+  } catch (error) {
+    console.error("Failed to get book by ID:", error);
+    return null;
+  }
+}
+
+/**
+ * Create a new book
+ */
+export async function createBook(input: BookInput): Promise<{ success: boolean; bookId?: string; error?: string }> {
+  try {
+    const slug = input.slug || slugify(input.title);
+    const existing = await getBookBySlug(slug);
+    if (existing) {
+      return { success: false, error: "A book with this slug already exists" };
+    }
+
+    const bookData = {
+      ...input,
+      slug,
+      featured: input.featured ?? false,
+      published: input.published ?? false,
+      createdAt: isAdminReady ? Timestamp.now() : ClientTimestamp.now(),
+      updatedAt: isAdminReady ? Timestamp.now() : ClientTimestamp.now(),
+    };
+
+    if (!isAdminReady || !adminDb) {
+      const docRef = await addDoc(collection(db, BOOKS_COLLECTION), bookData);
+      return { success: true, bookId: docRef.id };
+    }
+
+    const docRef = await adminDb.collection(BOOKS_COLLECTION).add(bookData);
+    return { success: true, bookId: docRef.id };
+  } catch (error) {
+    console.error("Failed to create book:", error);
+    return { success: false, error: "Failed to create book" };
+  }
+}
+
+/**
+ * Update a book
+ */
+export async function updateBook(
+  id: string,
+  input: Partial<BookInput>
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (input.slug) {
+      const existing = await getBookBySlug(input.slug);
+      if (existing && existing.id !== id) {
+        return { success: false, error: "A book with this slug already exists" };
+      }
+    }
+
+    const updateData = {
+      ...input,
+      updatedAt: isAdminReady ? Timestamp.now() : ClientTimestamp.now(),
+    };
+
+    if (!isAdminReady || !adminDb) {
+      await updateDoc(doc(db, BOOKS_COLLECTION, id), updateData);
+      return { success: true };
+    }
+
+    await adminDb.collection(BOOKS_COLLECTION).doc(id).update(updateData);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to update book:", error);
+    return { success: false, error: "Failed to update book" };
+  }
+}
+
+/**
+ * Delete a book
+ */
+export async function deleteBook(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!isAdminReady || !adminDb) {
+      await deleteDoc(doc(db, BOOKS_COLLECTION, id));
+      return { success: true };
+    }
+
+    await adminDb.collection(BOOKS_COLLECTION).doc(id).delete();
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete book:", error);
+    return { success: false, error: "Failed to delete book" };
+  }
+}
+
+/**
+ * Upload book file (PDF or EPUB) and return the URL
+ */
+export async function uploadBookFile(
+  bookId: string,
+  fileBuffer: Buffer,
+  filename: string,
+  contentType: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  // This requires Firebase Admin for signed URLs
+  if (!isAdminReady) {
+    return { success: false, error: "Firebase Admin required for file uploads" };
+  }
+
+  try {
+    const { adminStorage } = await import("@/lib/firebase-admin");
+    if (!adminStorage) {
+      return { success: false, error: "Storage not configured" };
+    }
+
+    const bucket = adminStorage.bucket();
+    const filePath = `books/${bookId}/${filename}`;
+    const file = bucket.file(filePath);
+
+    await file.save(fileBuffer, {
+      metadata: { contentType },
+    });
+
+    const [url] = await file.getSignedUrl({
+      action: "read",
+      expires: "03-01-2500",
+    });
+
+    return { success: true, url };
+  } catch (error) {
+    console.error("Failed to upload book file:", error);
+    return { success: false, error: "Failed to upload file" };
+  }
+}
