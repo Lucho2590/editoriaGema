@@ -1,10 +1,17 @@
 import { Resend } from "resend";
 
-if (!process.env.RESEND_API_KEY) {
-  console.warn("RESEND_API_KEY is not set. Email functionality will be disabled.");
-}
+// Lazy initialization to avoid build-time errors when API key is not set
+let resendClient: Resend | null = null;
 
-export const resend = new Resend(process.env.RESEND_API_KEY);
+function getResendClient(): Resend | null {
+  if (!process.env.RESEND_API_KEY) {
+    return null;
+  }
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
 
 export const emailConfig = {
   from: process.env.RESEND_FROM_EMAIL || "GEMA <hola@gema-editorial.com>",
@@ -18,13 +25,15 @@ export interface SendEmailParams {
 }
 
 export async function sendEmail({ to, subject, react }: SendEmailParams) {
-  if (!process.env.RESEND_API_KEY) {
+  const client = getResendClient();
+
+  if (!client) {
     console.log("Email would be sent to:", to, "Subject:", subject);
     return { success: true, mock: true };
   }
 
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await client.emails.send({
       from: emailConfig.from,
       to,
       subject,
@@ -42,3 +51,6 @@ export async function sendEmail({ to, subject, react }: SendEmailParams) {
     return { success: false, error };
   }
 }
+
+// Export for backwards compatibility - may be null if API key not configured
+export const resend = getResendClient();
