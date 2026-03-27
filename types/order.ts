@@ -1,5 +1,11 @@
-import { Timestamp } from "firebase/firestore";
 import { BookFormat } from "./book";
+
+// Generic timestamp type that works with both Firebase Admin and Client SDKs
+export interface FirestoreTimestamp {
+  seconds: number;
+  nanoseconds: number;
+  toDate(): Date;
+}
 
 export type PaymentProvider = "stripe" | "mercadopago";
 export type PaymentStatus = "pending" | "processing" | "completed" | "failed" | "refunded";
@@ -41,15 +47,15 @@ export interface Order {
   shippingAddress?: ShippingAddress;
   downloadLinks?: DownloadLink[];
   emailSent: boolean;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: FirestoreTimestamp;
+  updatedAt: FirestoreTimestamp;
 }
 
 export interface DownloadLink {
   bookId: string;
   format: BookFormat;
   url: string;
-  expiresAt: Timestamp;
+  expiresAt: FirestoreTimestamp;
   downloadCount: number;
   maxDownloads: number;
 }
