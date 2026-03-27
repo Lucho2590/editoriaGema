@@ -1,7 +1,6 @@
 "use client";
 
 import { forwardRef, ButtonHTMLAttributes } from "react";
-import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 
@@ -14,7 +13,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", loading, disabled, children, ...props }, ref) => {
     const baseStyles =
-      "inline-flex items-center justify-center font-sans tracking-wide transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed";
+      "inline-flex items-center justify-center font-sans tracking-wide transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]";
 
     const variants = {
       primary:
@@ -32,16 +31,15 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     };
 
     return (
-      <motion.button
+      <button
         ref={ref}
-        whileTap={{ scale: 0.98 }}
         className={cn(baseStyles, variants[variant], sizes[size], className)}
         disabled={disabled || loading}
         {...props}
       >
         {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
         {children}
-      </motion.button>
+      </button>
     );
   }
 );
