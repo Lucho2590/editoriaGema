@@ -13,6 +13,7 @@ import {
 import { doc, getDoc, setDoc, Timestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { User as GemaUser } from "@/types";
+import { sendWelcomeEmail } from "@/server/actions/emails";
 
 interface AuthState {
   user: User | null;
@@ -33,7 +34,7 @@ export function useAuth() {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         // Get or create GEMA user profile
-        const gemaUser = await getOrCreateGemaUser(firebaseUser);
+        const { gemaUser } = await getOrCreateGemaUser(firebaseUser);
         setState({
           user: firebaseUser,
           gemaUser,
@@ -57,7 +58,7 @@ export function useAuth() {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
-      const gemaUser = await getOrCreateGemaUser(result.user);
+      const { gemaUser } = await getOrCreateGemaUser(result.user);
       setState({
         user: result.user,
         gemaUser,
@@ -76,13 +77,19 @@ export function useAuth() {
     setState((prev) => ({ ...prev, loading: true, error: null }));
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
-      const gemaUser = await getOrCreateGemaUser(result.user);
+      const { gemaUser } = await getOrCreateGemaUser(result.user);
       setState({
         user: result.user,
         gemaUser,
         loading: false,
         error: null,
       });
+
+      // Send welcome email (fire and forget)
+      sendWelcomeEmail(result.user.email || email, result.user.displayName || undefined).catch(
+        (err) => console.error("Failed to send welcome email:", err)
+      );
+
       return { success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error al crear cuenta";
@@ -96,13 +103,22 @@ export function useAuth() {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
-      const gemaUser = await getOrCreateGemaUser(result.user);
+      const { gemaUser, isNew } = await getOrCreateGemaUser(result.user);
       setState({
         user: result.user,
         gemaUser,
         loading: false,
         error: null,
       });
+
+      // Send welcome email only for new users (fire and forget)
+      if (isNew) {
+        sendWelcomeEmail(
+          result.user.email || "",
+          result.user.displayName || undefined
+        ).catch((err) => console.error("Failed to send welcome email:", err));
+      }
+
       return { success: true };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error con Google";
@@ -137,12 +153,12 @@ export function useAuth() {
   };
 }
 
-async function getOrCreateGemaUser(firebaseUser: User): Promise<GemaUser> {
+async function getOrCreateGemaUser(firebaseUser: User): Promise<{ gemaUser: GemaUser; isNew: boolean }> {
   const userRef = doc(db, "users", firebaseUser.uid);
   const userDoc = await getDoc(userRef);
 
   if (userDoc.exists()) {
-    return { id: userDoc.id, ...userDoc.data() } as GemaUser;
+    return { gemaUser: { id: userDoc.id, ...userDoc.data() } as GemaUser, isNew: false };
   }
 
   // Create new user profile
@@ -157,5 +173,5 @@ async function getOrCreateGemaUser(firebaseUser: User): Promise<GemaUser> {
 
   await setDoc(userRef, newUser);
 
-  return { id: firebaseUser.uid, ...newUser };
+  return { gemaUser: { id: firebaseUser.uid, ...newUser }, isNew: true };
 }

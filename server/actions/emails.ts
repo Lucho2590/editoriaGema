@@ -5,8 +5,20 @@ import { Order, DownloadLink } from "@/types";
 import { PurchaseConfirmationEmail } from "@/components/email/PurchaseConfirmation";
 import { DownloadDeliveryEmail } from "@/components/email/DownloadDelivery";
 import { AdminNotificationEmail } from "@/components/email/AdminNotification";
+import { WelcomeEmail } from "@/components/email/WelcomeEmail";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@gema-editorial.com";
+
+/**
+ * Send welcome email to new user
+ */
+export async function sendWelcomeEmail(to: string, displayName?: string) {
+  return sendEmail({
+    to,
+    subject: "Bienvenido/a a GEMA",
+    react: WelcomeEmail({ displayName }),
+  });
+}
 
 /**
  * Send purchase confirmation email

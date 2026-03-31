@@ -4,11 +4,12 @@ import { Resend } from "resend";
 let resendClient: Resend | null = null;
 
 function getResendClient(): Resend | null {
-  if (!process.env.RESEND_API_KEY) {
+  const apiKey = process.env.RESEND_API_CHECKOUT_BOOK || process.env.RESEND_API_KEY;
+  if (!apiKey) {
     return null;
   }
   if (!resendClient) {
-    resendClient = new Resend(process.env.RESEND_API_KEY);
+    resendClient = new Resend(apiKey);
   }
   return resendClient;
 }
