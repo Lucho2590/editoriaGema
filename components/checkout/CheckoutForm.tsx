@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
 import { Trash2, Minus, Plus } from "lucide-react";
 import { useCartStore } from "@/hooks/useCart";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,9 +10,8 @@ import { getBookPrice, formatBookPrice, PaymentProvider } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { createOrder } from "@/server/actions/orders";
-import { createPayment } from "@/lib/payments";
-import { trackCheckoutStarted } from "@/lib/analytics";
+import { createOrderAndPayment, simulatePayment } from "@/server/actions/orders";
+import { trackCheckoutStarted, trackPurchaseCompleted } from "@/lib/analytics";
 
 export function CheckoutForm() {
   const router = useRouter();
@@ -64,13 +62,14 @@ export function CheckoutForm() {
     setStep("payment");
   };
 
-  const handlePayment = async () => {
+  const isDev = process.env.NEXT_PUBLIC_APP_URL?.includes("localhost") ?? false;
+
+  const handleSimulatePayment = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Create order
-      const orderResult = await createOrder({
+      const result = await simulatePayment({
         userEmail: email,
         userId: user?.uid,
         items: items.map((item) => ({
@@ -85,35 +84,52 @@ export function CheckoutForm() {
         shippingAddress: hasPrintItems ? shippingInfo : undefined,
       });
 
-      if (!orderResult.success || !orderResult.orderId) {
-        throw new Error(orderResult.error || "Error al crear el pedido");
+      if (!result.success || !result.orderId) {
+        throw new Error(result.error || "Error al simular el pago");
       }
 
-      // Create payment
-      const paymentResult = await createPayment({
-        provider: paymentProvider,
-        orderId: orderResult.orderId,
-        items: items.map((item) => ({
-          bookId: item.bookId,
-          bookTitle: item.book.title,
-          bookAuthor: item.book.author,
-          format: item.format,
-          price: getBookPrice(item.book, item.format),
-          quantity: item.quantity,
-        })),
-        total,
-        customerEmail: email,
-        successUrl: `${window.location.origin}/checkout/success`,
-        cancelUrl: `${window.location.origin}/checkout`,
-      });
-
-      if (!paymentResult.success || !paymentResult.checkoutUrl) {
-        throw new Error(paymentResult.error || "Error al procesar el pago");
-      }
-
-      // Clear cart and redirect
+      trackPurchaseCompleted(result.orderId, total, items.length);
       clearCart();
-      window.location.href = paymentResult.checkoutUrl;
+      router.push("/checkout/success");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al simular el pago");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await createOrderAndPayment(
+        {
+          userEmail: email,
+          userId: user?.uid,
+          items: items.map((item) => ({
+            bookId: item.bookId,
+            bookTitle: item.book.title,
+            bookAuthor: item.book.author,
+            format: item.format,
+            price: getBookPrice(item.book, item.format),
+            quantity: item.quantity,
+          })),
+          paymentProvider,
+          shippingAddress: hasPrintItems ? shippingInfo : undefined,
+        },
+        {
+          successUrl: `${window.location.origin}/checkout/success`,
+          cancelUrl: `${window.location.origin}/checkout`,
+        }
+      );
+
+      if (!result.success || !result.checkoutUrl) {
+        throw new Error(result.error || "Error al procesar el pago");
+      }
+
+      clearCart();
+      window.location.href = result.checkoutUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al procesar el pago");
       setLoading(false);
@@ -140,14 +156,9 @@ export function CheckoutForm() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
       {/* Main Content */}
       <div className="lg:col-span-2">
-        <AnimatePresence mode="wait">
+        <>
           {step === "cart" && (
-            <motion.div
-              key="cart"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-            >
+            <div>
               <h2 className="font-serif text-heading-xl text-gema-black mb-8">
                 Carrito
               </h2>
@@ -218,16 +229,11 @@ export function CheckoutForm() {
                   Continuar
                 </Button>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {step === "info" && (
-            <motion.div
-              key="info"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-            >
+            <div>
               <h2 className="font-serif text-heading-xl text-gema-black mb-8">
                 Información
               </h2>
@@ -307,16 +313,11 @@ export function CheckoutForm() {
                   </Button>
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {step === "payment" && (
-            <motion.div
-              key="payment"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-            >
+            <div>
               <h2 className="font-serif text-heading-xl text-gema-black mb-8">
                 Pago
               </h2>
@@ -364,18 +365,27 @@ export function CheckoutForm() {
                   <p className="text-small text-red-500">{error}</p>
                 )}
 
-                <div className="flex gap-4 pt-4">
+                <div className="flex flex-wrap gap-4 pt-4">
                   <Button variant="secondary" onClick={() => setStep("info")}>
                     Volver
                   </Button>
                   <Button onClick={handlePayment} loading={loading}>
                     Pagar {formatCurrency(total)}
                   </Button>
+                  {isDev && (
+                    <Button
+                      onClick={handleSimulatePayment}
+                      loading={loading}
+                      className="!bg-amber-600 hover:!bg-amber-700"
+                    >
+                      Simular Pago (Dev)
+                    </Button>
+                  )}
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </>
       </div>
 
       {/* Order Summary */}
