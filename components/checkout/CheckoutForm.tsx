@@ -10,10 +10,7 @@ import { getBookPrice, formatBookPrice, PaymentProvider } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import {
-  createOrderAndPayment,
-  simulatePayment,
-} from "@/server/actions/orders";
+import { createOrderAndPayment, simulatePayment } from "@/server/actions/orders";
 import { trackCheckoutStarted, trackPurchaseCompleted } from "@/lib/analytics";
 
 export function CheckoutForm() {
@@ -106,9 +103,11 @@ export function CheckoutForm() {
     }
   };
 
+
   const handlePayment = async () => {
     setLoading(true);
     setError(null);
+
 
     try {
       const result = await createOrderAndPayment(
@@ -129,7 +128,7 @@ export function CheckoutForm() {
         {
           successUrl: `${window.location.origin}/checkout/success`,
           cancelUrl: `${window.location.origin}/checkout`,
-        },
+        }
       );
 
       if (!result.success || !result.checkoutUrl) {
@@ -426,14 +425,15 @@ export function CheckoutForm() {
                   <Button onClick={handlePayment} loading={loading}>
                     Pagar {formatCurrency(total)}
                   </Button>
-
-                  <Button
-                    onClick={handleSimulatePayment}
-                    loading={loading}
-                    className="!bg-amber-600 hover:!bg-amber-700"
-                  >
-                    Simular Pago (Dev)
-                  </Button>
+                  {isDev && (
+                    <Button
+                      onClick={handleSimulatePayment}
+                      loading={loading}
+                      className="!bg-amber-600 hover:!bg-amber-700"
+                    >
+                      Simular Pago (Dev)
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
