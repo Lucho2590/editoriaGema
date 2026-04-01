@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { Book, ShoppingBag, Users, BarChart3, Settings, LogOut } from "lucide-react";
+import { Book, ShoppingBag, Users, BarChart3, Settings, LogOut, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -12,6 +12,7 @@ const navigation = [
   { href: "/admin/libros", label: "Libros", icon: Book },
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag },
   { href: "/admin/clientes", label: "Clientes", icon: Users },
+  { href: "/admin/usuarios", label: "Administradores", icon: UserCog },
 ];
 
 export default function AdminLayout({

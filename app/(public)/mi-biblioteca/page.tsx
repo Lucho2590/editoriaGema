@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
-import { Download, ExternalLink } from "lucide-react";
+import { Download } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -127,12 +126,10 @@ export default function MiBibliotecaPage() {
         <div className="max-w-content mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {purchases.map((purchase, index) => (
-              <motion.div
+              <div
                 key={`${purchase.orderId}-${purchase.bookId}-${purchase.format}`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
-                className="group"
+                className="group animate-fade-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <div className="bg-gema-gray-50 p-6">
                   {/* Cover */}
@@ -179,7 +176,7 @@ export default function MiBibliotecaPage() {
                     </Button>
                   )}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>

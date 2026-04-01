@@ -1,12 +1,155 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@import "tw-animate-css";
 
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Fonts */
+  --font-editorial: "Playfair Display", Georgia, serif;
+  --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  /* Editorial color palette */
+  --color-gema-black: #0a0a0a;
+  --color-gema-white: #fafafa;
+  --color-gema-cream: #f5f3ef;
+  --color-gema-sand: #e8e4dd;
+
+  /* Gray scale */
+  --color-gema-gray-50: #f7f7f7;
+  --color-gema-gray-100: #e3e3e3;
+  --color-gema-gray-200: #c8c8c8;
+  --color-gema-gray-300: #a4a4a4;
+  --color-gema-gray-400: #818181;
+  --color-gema-gray-500: #666666;
+  --color-gema-gray-600: #515151;
+  --color-gema-gray-700: #434343;
+  --color-gema-gray-800: #383838;
+  --color-gema-gray-900: #171717;
+
+  /* Custom font sizes */
+  --font-size-display-xl: 6rem;
+  --font-size-display-xl--line-height: 1;
+  --font-size-display-xl--letter-spacing: -0.02em;
+
+  --font-size-display-lg: 4.5rem;
+  --font-size-display-lg--line-height: 1.05;
+  --font-size-display-lg--letter-spacing: -0.02em;
+
+  --font-size-display: 3.5rem;
+  --font-size-display--line-height: 1.1;
+  --font-size-display--letter-spacing: -0.01em;
+
+  --font-size-heading-xl: 2.5rem;
+  --font-size-heading-xl--line-height: 1.2;
+  --font-size-heading-xl--letter-spacing: -0.01em;
+
+  --font-size-heading-lg: 2rem;
+  --font-size-heading-lg--line-height: 1.25;
+
+  --font-size-heading: 1.5rem;
+  --font-size-heading--line-height: 1.3;
+
+  --font-size-body-lg: 1.125rem;
+  --font-size-body-lg--line-height: 1.6;
+
+  --font-size-body: 1rem;
+  --font-size-body--line-height: 1.7;
+
+  --font-size-small: 0.875rem;
+  --font-size-small--line-height: 1.5;
+
+  --font-size-caption: 0.75rem;
+  --font-size-caption--line-height: 1.4;
+  --font-size-caption--letter-spacing: 0.02em;
+
+  /* Custom spacing */
+  --spacing-section: 8rem;
+  --spacing-section-sm: 4rem;
+  --spacing-gutter: 2rem;
+  --spacing-gutter-sm: 1rem;
+
+  /* Custom max widths */
+  --width-content: 72rem;
+  --width-prose: 42rem;
+  --width-narrow: 32rem;
+
+  /* Custom animations */
+  --animate-fade-in: fadeIn 0.6s ease-out forwards;
+  --animate-fade-up: fadeUp 0.6s ease-out forwards;
+  --animate-slide-in: slideIn 0.4s ease-out forwards;
+
+  /* Transition durations */
+  --duration-400: 400ms;
+  --duration-600: 600ms;
+
+  /* shadcn/ui theme variables */
+  --radius: 0.5rem;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Base styles */
 @layer base {
   :root {
     --font-editorial: "Playfair Display", Georgia, serif;
     --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+    /* shadcn/ui CSS variables */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 4%;
+    --primary: 0 0% 4%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 4%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 4%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 4%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
   }
 
   html {
@@ -14,78 +157,106 @@
   }
 
   body {
-    @apply bg-gema-white text-gema-black antialiased;
+    background-color: var(--color-gema-white);
+    color: var(--color-gema-black);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     font-feature-settings: "kern" 1, "liga" 1;
   }
 
   ::selection {
-    @apply bg-gema-black text-gema-white;
+    background-color: var(--color-gema-black);
+    color: var(--color-gema-white);
   }
 
   /* Smooth page transitions */
   .page-transition {
     animation: fadeIn 0.4s ease-out;
   }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
 }
 
 @layer components {
   /* Editorial section spacing */
   .section {
-    @apply py-section px-gutter;
+    padding-top: var(--spacing-section);
+    padding-bottom: var(--spacing-section);
+    padding-left: var(--spacing-gutter);
+    padding-right: var(--spacing-gutter);
   }
 
   .section-sm {
-    @apply py-section-sm px-gutter;
+    padding-top: var(--spacing-section-sm);
+    padding-bottom: var(--spacing-section-sm);
+    padding-left: var(--spacing-gutter);
+    padding-right: var(--spacing-gutter);
   }
 
   /* Container */
   .container-content {
-    @apply max-w-content mx-auto px-gutter;
+    max-width: var(--width-content);
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--spacing-gutter);
+    padding-right: var(--spacing-gutter);
   }
 
   /* Prose styling for long-form content */
   .prose-editorial {
-    @apply text-body-lg leading-relaxed text-gema-gray-700;
+    font-size: var(--font-size-body-lg);
+    line-height: var(--font-size-body-lg--line-height);
+    color: var(--color-gema-gray-700);
   }
 
   .prose-editorial p {
-    @apply mb-6;
+    margin-bottom: 1.5rem;
   }
 
   .prose-editorial h2 {
-    @apply font-serif text-heading-xl text-gema-black mt-12 mb-6;
+    font-family: var(--font-editorial);
+    font-size: var(--font-size-heading-xl);
+    line-height: var(--font-size-heading-xl--line-height);
+    color: var(--color-gema-black);
+    margin-top: 3rem;
+    margin-bottom: 1.5rem;
   }
 
   .prose-editorial h3 {
-    @apply font-serif text-heading-lg text-gema-black mt-8 mb-4;
+    font-family: var(--font-editorial);
+    font-size: var(--font-size-heading-lg);
+    line-height: var(--font-size-heading-lg--line-height);
+    color: var(--color-gema-black);
+    margin-top: 2rem;
+    margin-bottom: 1rem;
   }
 
   .prose-editorial blockquote {
-    @apply border-l-2 border-gema-gray-200 pl-6 my-8 italic text-gema-gray-600;
+    border-left: 2px solid var(--color-gema-gray-200);
+    padding-left: 1.5rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+    font-style: italic;
+    color: var(--color-gema-gray-600);
   }
 
   .prose-editorial a {
-    @apply text-gema-black underline underline-offset-4 hover:text-gema-gray-600 transition-colors;
+    color: var(--color-gema-black);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+    transition: color 0.3s;
+  }
+
+  .prose-editorial a:hover {
+    color: var(--color-gema-gray-600);
   }
 
   .prose-editorial ul,
   .prose-editorial ol {
-    @apply mb-6 pl-6;
+    margin-bottom: 1.5rem;
+    padding-left: 1.5rem;
   }
 
   .prose-editorial li {
-    @apply mb-2;
+    margin-bottom: 0.5rem;
   }
 }
 

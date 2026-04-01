@@ -232,7 +232,7 @@ export default function NuevoLibroPage() {
                     {pdfFile ? pdfFile.name : "Subir archivo PDF"}
                     <input
                       type="file"
-                      accept=".pdf"
+                      accept=".pdf,application/pdf"
                       onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
                       className="hidden"
                     />
@@ -272,7 +272,7 @@ export default function NuevoLibroPage() {
                     {epubFile ? epubFile.name : "Subir archivo EPUB"}
                     <input
                       type="file"
-                      accept=".epub"
+                      accept=".epub,application/epub+zip"
                       onChange={(e) => setEpubFile(e.target.files?.[0] || null)}
                       className="hidden"
                     />

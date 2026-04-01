@@ -26,14 +26,14 @@ export default function LoginPage() {
 
     const result = await signIn(email, password);
     if (result.success) {
-      router.push("/mi-biblioteca");
+      router.push("/admin");
     }
   };
 
   const handleGoogleSignIn = async () => {
     const result = await signInWithGoogle();
     if (result.success) {
-      router.push("/mi-biblioteca");
+      router.push("/admin");
     }
   };
 

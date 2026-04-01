@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Inter } from "next/font/google";
-import { Navbar } from "@/components/layout/Navbar";
-import { Footer } from "@/components/layout/Footer";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -32,11 +30,11 @@ export const metadata: Metadata = {
     "ebooks",
     "arte",
   ],
-  authors: [{ name: "GEMA Editorial" }],
+  authors: [{ name: "Editorial GEMA" }],
   openGraph: {
     type: "website",
     locale: "es_AR",
-    siteName: "GEMA Editorial",
+    siteName: "Editorial GEMA",
   },
 };
 
@@ -47,11 +45,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${playfair.variable} ${inter.variable}`}>
-      <body className="min-h-screen flex flex-col">
-        <Navbar />
-        <main className="flex-1 pt-24">{children}</main>
-        <Footer />
-      </body>
+      <body className="min-h-screen flex flex-col">{children}</body>
     </html>
   );
 }

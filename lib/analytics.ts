@@ -29,20 +29,25 @@ export async function trackEvent(
   userId?: string
 ): Promise<void> {
   try {
-    const event: AnalyticsEventInput = {
+    // Build event object, filtering out undefined values
+    const event: Record<string, unknown> = {
       type,
       sessionId: getSessionId(),
-      userId,
       data: data || {},
       page: typeof window !== "undefined" ? window.location.pathname : "",
-      referrer: typeof document !== "undefined" ? document.referrer : undefined,
+      timestamp: Timestamp.now(),
     };
 
-    await addDoc(collection(db, COLLECTION_NAME), {
-      ...event,
-      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : undefined,
-      timestamp: Timestamp.now(),
-    });
+    // Only add optional fields if they have values
+    if (userId) event.userId = userId;
+    if (typeof document !== "undefined" && document.referrer) {
+      event.referrer = document.referrer;
+    }
+    if (typeof navigator !== "undefined" && navigator.userAgent) {
+      event.userAgent = navigator.userAgent;
+    }
+
+    await addDoc(collection(db, COLLECTION_NAME), event);
   } catch (error) {
     // Silently fail - analytics should not break the app
     console.error("Analytics tracking failed:", error);

@@ -1,5 +1,3 @@
-import { Timestamp } from "firebase/firestore";
-
 export type BookFormat = "pdf" | "epub" | "print";
 
 export interface BookFormats {
@@ -25,8 +23,8 @@ export interface Book {
   stockPrint: number;
   featured: boolean;
   published: boolean;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: string; // ISO string for serialization
+  updatedAt: string; // ISO string for serialization
 }
 
 export interface BookInput {

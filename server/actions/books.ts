@@ -22,6 +22,39 @@ import { slugify } from "@/lib/utils";
 const BOOKS_COLLECTION = "books";
 
 /**
+ * Serialize Firestore document to plain object
+ */
+function serializeBook(doc: { id: string; data: () => Record<string, unknown> }): Book {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    ...data,
+    createdAt: serializeTimestamp(data.createdAt),
+    updatedAt: serializeTimestamp(data.updatedAt),
+  } as Book;
+}
+
+function serializeTimestamp(timestamp: unknown): string {
+  if (!timestamp) return new Date().toISOString();
+
+  // Firebase Admin Timestamp
+  if (timestamp && typeof timestamp === 'object' && '_seconds' in timestamp) {
+    const ts = timestamp as { _seconds: number; _nanoseconds: number };
+    return new Date(ts._seconds * 1000).toISOString();
+  }
+
+  // Firestore Client Timestamp
+  if (timestamp && typeof timestamp === 'object' && 'toDate' in timestamp) {
+    return (timestamp as { toDate: () => Date }).toDate().toISOString();
+  }
+
+  // Already a string
+  if (typeof timestamp === 'string') return timestamp;
+
+  return new Date().toISOString();
+}
+
+/**
  * Get all published books
  */
 export async function getBooks(): Promise<Book[]> {
@@ -34,7 +67,7 @@ export async function getBooks(): Promise<Book[]> {
         orderBy("createdAt", "desc")
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+      return snapshot.docs.map((d) => serializeBook({ id: d.id, data: () => d.data() }));
     }
 
     const snapshot = await adminDb
@@ -43,7 +76,7 @@ export async function getBooks(): Promise<Book[]> {
       .orderBy("createdAt", "desc")
       .get();
 
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+    return snapshot.docs.map((d) => serializeBook({ id: d.id, data: () => d.data() as Record<string, unknown> }));
   } catch (error) {
     console.error("Failed to get books:", error);
     return [];
@@ -58,11 +91,11 @@ export async function getAllBooks(): Promise<Book[]> {
     if (!isAdminReady || !adminDb) {
       const q = query(collection(db, BOOKS_COLLECTION), orderBy("createdAt", "desc"));
       const snapshot = await getDocs(q);
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+      return snapshot.docs.map((d) => serializeBook({ id: d.id, data: () => d.data() }));
     }
 
     const snapshot = await adminDb.collection(BOOKS_COLLECTION).orderBy("createdAt", "desc").get();
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+    return snapshot.docs.map((d) => serializeBook({ id: d.id, data: () => d.data() as Record<string, unknown> }));
   } catch (error) {
     console.error("Failed to get all books:", error);
     return [];
@@ -81,7 +114,7 @@ export async function getFeaturedBooks(): Promise<Book[]> {
         where("featured", "==", true)
       );
       const snapshot = await getDocs(q);
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+      return snapshot.docs.map((d) => serializeBook({ id: d.id, data: () => d.data() }));
     }
 
     const snapshot = await adminDb
@@ -91,7 +124,7 @@ export async function getFeaturedBooks(): Promise<Book[]> {
       .limit(6)
       .get();
 
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Book);
+    return snapshot.docs.map((d) => serializeBook({ id: d.id, data: () => d.data() as Record<string, unknown> }));
   } catch (error) {
     console.error("Failed to get featured books:", error);
     return [];
@@ -107,14 +140,14 @@ export async function getBookBySlug(slug: string): Promise<Book | null> {
       const q = query(collection(db, BOOKS_COLLECTION), where("slug", "==", slug));
       const snapshot = await getDocs(q);
       if (snapshot.empty) return null;
-      const docSnap = snapshot.docs[0];
-      return { id: docSnap.id, ...docSnap.data() } as Book;
+      const d = snapshot.docs[0];
+      return serializeBook({ id: d.id, data: () => d.data() });
     }
 
     const snapshot = await adminDb.collection(BOOKS_COLLECTION).where("slug", "==", slug).limit(1).get();
     if (snapshot.empty) return null;
-    const docSnap = snapshot.docs[0];
-    return { id: docSnap.id, ...docSnap.data() } as Book;
+    const d = snapshot.docs[0];
+    return serializeBook({ id: d.id, data: () => d.data() as Record<string, unknown> });
   } catch (error) {
     console.error("Failed to get book by slug:", error);
     return null;
@@ -129,12 +162,12 @@ export async function getBookById(id: string): Promise<Book | null> {
     if (!isAdminReady || !adminDb) {
       const docSnap = await getDoc(doc(db, BOOKS_COLLECTION, id));
       if (!docSnap.exists()) return null;
-      return { id: docSnap.id, ...docSnap.data() } as Book;
+      return serializeBook({ id: docSnap.id, data: () => docSnap.data() as Record<string, unknown> });
     }
 
     const docSnap = await adminDb.collection(BOOKS_COLLECTION).doc(id).get();
     if (!docSnap.exists) return null;
-    return { id: docSnap.id, ...docSnap.data() } as Book;
+    return serializeBook({ id: docSnap.id, data: () => docSnap.data() as Record<string, unknown> });
   } catch (error) {
     console.error("Failed to get book by ID:", error);
     return null;
@@ -263,4 +296,18 @@ export async function uploadBookFile(
     console.error("Failed to upload book file:", error);
     return { success: false, error: "Failed to upload file" };
   }
+}
+
+/**
+ * Toggle book published status
+ */
+export async function toggleBookPublished(id: string, published: boolean): Promise<{ success: boolean; error?: string }> {
+  return updateBook(id, { published });
+}
+
+/**
+ * Toggle book featured status
+ */
+export async function toggleBookFeatured(id: string, featured: boolean): Promise<{ success: boolean; error?: string }> {
+  return updateBook(id, { featured });
 }

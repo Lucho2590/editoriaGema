@@ -16,8 +16,9 @@ import {
   Timestamp as ClientTimestamp
 } from "firebase/firestore";
 import { Timestamp } from "firebase-admin/firestore";
-import { Order, OrderInput, OrderItem, PaymentStatus, DownloadLink } from "@/types";
+import { Order, OrderInput, OrderItem, PaymentStatus, DownloadLink, PaymentProvider } from "@/types";
 import { sendPurchaseConfirmation, sendDownloadEmail, sendAdminNotification } from "./emails";
+import { createPayment, CreatePaymentParams } from "@/lib/payments";
 
 const ORDERS_COLLECTION = "orders";
 const USER_LIBRARY_COLLECTION = "user_library";
@@ -34,8 +35,7 @@ export async function createOrder(input: OrderInput): Promise<{ success: boolean
 
     const now = isAdminReady ? Timestamp.now() : ClientTimestamp.now();
 
-    const order = {
-      userId: input.userId,
+    const order: Record<string, unknown> = {
       userEmail: input.userEmail,
       items: input.items,
       subtotal,
@@ -46,11 +46,17 @@ export async function createOrder(input: OrderInput): Promise<{ success: boolean
       orderStatus: "pending" as const,
       hasDigitalItems,
       hasPrintItems,
-      shippingAddress: input.shippingAddress,
       emailSent: false,
       createdAt: now,
       updatedAt: now,
     };
+
+    if (input.userId) {
+      order.userId = input.userId;
+    }
+    if (input.shippingAddress) {
+      order.shippingAddress = input.shippingAddress;
+    }
 
     if (!isAdminReady || !adminDb) {
       const docRef = await addDoc(collection(db, ORDERS_COLLECTION), order);
@@ -280,6 +286,72 @@ function calculateShipping(country?: string): number {
   };
 
   return shippingRates[country] || shippingRates.default;
+}
+
+/**
+ * Create order and initiate payment (server action wrapper)
+ */
+export async function createOrderAndPayment(
+  input: OrderInput,
+  paymentParams: { successUrl: string; cancelUrl: string }
+): Promise<{ success: boolean; checkoutUrl?: string; error?: string }> {
+  try {
+    const orderResult = await createOrder(input);
+    if (!orderResult.success || !orderResult.orderId) {
+      return { success: false, error: orderResult.error || "Failed to create order" };
+    }
+
+    const paymentResult = await createPayment({
+      provider: input.paymentProvider,
+      orderId: orderResult.orderId,
+      items: input.items,
+      total: input.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+      customerEmail: input.userEmail,
+      successUrl: paymentParams.successUrl,
+      cancelUrl: paymentParams.cancelUrl,
+    });
+
+    if (!paymentResult.success || !paymentResult.checkoutUrl) {
+      return { success: false, error: paymentResult.error || "Failed to create payment" };
+    }
+
+    return { success: true, checkoutUrl: paymentResult.checkoutUrl };
+  } catch (error) {
+    console.error("Failed to create order and payment:", error);
+    return { success: false, error: "Failed to process payment" };
+  }
+}
+
+/**
+ * Simulate a completed payment (development only)
+ * Creates an order and immediately processes it as completed, triggering all emails.
+ */
+export async function simulatePayment(input: OrderInput): Promise<{ success: boolean; orderId?: string; error?: string }> {
+  if (process.env.NODE_ENV === "production") {
+    return { success: false, error: "Payment simulation is not available in production" };
+  }
+
+  try {
+    const orderResult = await createOrder(input);
+    if (!orderResult.success || !orderResult.orderId) {
+      return { success: false, error: orderResult.error || "Failed to create order" };
+    }
+
+    const paymentResult = await updateOrderPayment(
+      orderResult.orderId,
+      `sim_${Date.now()}`,
+      "completed"
+    );
+
+    if (!paymentResult.success) {
+      return { success: false, error: paymentResult.error || "Failed to process simulated payment" };
+    }
+
+    return { success: true, orderId: orderResult.orderId };
+  } catch (error) {
+    console.error("Failed to simulate payment:", error);
+    return { success: false, error: "Failed to simulate payment" };
+  }
 }
 
 /**

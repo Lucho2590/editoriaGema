@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { Book } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 
@@ -22,11 +21,9 @@ export function BookCard({ book, index = 0 }: BookCardProps) {
   const lowestPrice = Math.min(...prices);
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className="group"
+    <article
+      className="group animate-fade-up"
+      style={{ animationDelay: `${index * 0.1}s` }}
     >
       <Link href={`/libro/${book.slug}`}>
         {/* Cover */}
@@ -79,6 +76,6 @@ export function BookCard({ book, index = 0 }: BookCardProps) {
           </div>
         </div>
       </Link>
-    </motion.article>
+    </article>
   );
 }

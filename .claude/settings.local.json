@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(npm install:*)",
+      "Bash(npm view:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(pkill:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 15 npm run dev)",
+      "Bash(kill:*)",
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

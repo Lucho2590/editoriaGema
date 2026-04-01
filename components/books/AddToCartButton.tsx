@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Check, ShoppingBag } from "lucide-react";
 import { Book, BookFormat, getBookPrice } from "@/types";
 import { useCartStore } from "@/hooks/useCart";
 import { trackAddToCart } from "@/lib/analytics";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils";
 
 interface AddToCartButtonProps {
   book: Book;
@@ -28,32 +28,25 @@ export function AddToCartButton({ book, format, size = "md", className }: AddToC
   };
 
   return (
-    <Button onClick={handleClick} size={size} className={className}>
-      <AnimatePresence mode="wait">
-        {added ? (
-          <motion.span
-            key="added"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex items-center"
-          >
-            <Check className="w-4 h-4 mr-2" />
-            Agregado
-          </motion.span>
-        ) : (
-          <motion.span
-            key="add"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex items-center"
-          >
-            <ShoppingBag className="w-4 h-4 mr-2" />
-            Agregar
-          </motion.span>
+    <Button onClick={handleClick} size={size} className={cn("relative overflow-hidden", className)}>
+      <span
+        className={cn(
+          "flex items-center transition-all duration-300",
+          added ? "opacity-0 -translate-y-full" : "opacity-100 translate-y-0"
         )}
-      </AnimatePresence>
+      >
+        <ShoppingBag className="w-4 h-4 mr-2" />
+        Agregar
+      </span>
+      <span
+        className={cn(
+          "absolute inset-0 flex items-center justify-center transition-all duration-300",
+          added ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full"
+        )}
+      >
+        <Check className="w-4 h-4 mr-2" />
+        Agregado
+      </span>
     </Button>
   );
 }

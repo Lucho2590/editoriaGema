@@ -148,11 +148,11 @@ async function getOrCreateGemaUser(firebaseUser: User): Promise<GemaUser> {
   // Create new user profile
   const newUser: Omit<GemaUser, "id"> = {
     email: firebaseUser.email || "",
-    displayName: firebaseUser.displayName || undefined,
-    photoURL: firebaseUser.photoURL || undefined,
     isAdmin: false,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
+    ...(firebaseUser.displayName && { displayName: firebaseUser.displayName }),
+    ...(firebaseUser.photoURL && { photoURL: firebaseUser.photoURL }),
   };
 
   await setDoc(userRef, newUser);
