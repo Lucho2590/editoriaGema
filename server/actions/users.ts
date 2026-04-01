@@ -148,11 +148,9 @@ export async function getAdminUsers() {
   try {
     const snapshot = await adminDb
       .collection("users")
+      .where("isAdmin", "==", true)
       .orderBy("createdAt", "desc")
-      // .where("isAdmin", "==", true)
       .get();
-
-    console.log("Admin users snapshot:", snapshot);
     const users = snapshot.docs.map((doc) => {
       const data = doc.data();
       return {
