@@ -21,6 +21,39 @@ import { sendTicketEmail } from "./emails";
 const EVENTS_COLLECTION = "events";
 const TICKETS_COLLECTION = "tickets";
 
+// Serialize Firestore timestamps to plain objects for client components
+function serializeTimestamp(ts: unknown): { seconds: number; nanoseconds: number } | null {
+  if (!ts) return null;
+  if (typeof ts === "object" && ts !== null && "_seconds" in ts) {
+    const t = ts as { _seconds: number; _nanoseconds: number };
+    return { seconds: t._seconds, nanoseconds: t._nanoseconds };
+  }
+  if (typeof ts === "object" && ts !== null && "seconds" in ts) {
+    const t = ts as { seconds: number; nanoseconds: number };
+    return { seconds: t.seconds, nanoseconds: t.nanoseconds };
+  }
+  return null;
+}
+
+function serializeEvent(doc: { id: string; [key: string]: unknown }): GemaEvent {
+  return {
+    ...doc,
+    date: serializeTimestamp(doc.date),
+    createdAt: serializeTimestamp(doc.createdAt),
+    updatedAt: serializeTimestamp(doc.updatedAt),
+  } as unknown as GemaEvent;
+}
+
+function serializeTicket(doc: { id: string; [key: string]: unknown }): Ticket {
+  return {
+    ...doc,
+    eventDate: serializeTimestamp(doc.eventDate),
+    createdAt: serializeTimestamp(doc.createdAt),
+    updatedAt: serializeTimestamp(doc.updatedAt),
+    usedAt: doc.usedAt ? serializeTimestamp(doc.usedAt) : undefined,
+  } as unknown as Ticket;
+}
+
 function generateTicketCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin I, O, 0, 1 para evitar confusión
   let code = "";
@@ -108,14 +141,14 @@ export async function getEvents(onlyActive = false): Promise<GemaEvent[]> {
         ref = ref.where("active", "==", true);
       }
       const snapshot = await ref.get();
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as GemaEvent);
+      return snapshot.docs.map((doc) => serializeEvent({ id: doc.id, ...doc.data() }));
     }
 
     const q = onlyActive
       ? query(collection(db, EVENTS_COLLECTION), where("active", "==", true), orderBy("date", "asc"))
       : query(collection(db, EVENTS_COLLECTION), orderBy("date", "asc"));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as GemaEvent);
+    return snapshot.docs.map((doc) => serializeEvent({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error("Failed to get events:", error);
     return [];
@@ -127,11 +160,11 @@ export async function getEvent(eventId: string): Promise<GemaEvent | null> {
     if (isAdminReady && adminDb) {
       const docSnap = await adminDb.collection(EVENTS_COLLECTION).doc(eventId).get();
       if (!docSnap.exists) return null;
-      return { id: docSnap.id, ...docSnap.data() } as GemaEvent;
+      return serializeEvent({ id: docSnap.id, ...docSnap.data() });
     }
     const docSnap = await getDoc(doc(db, EVENTS_COLLECTION, eventId));
     if (!docSnap.exists()) return null;
-    return { id: docSnap.id, ...docSnap.data() } as GemaEvent;
+    return serializeEvent({ id: docSnap.id, ...docSnap.data() });
   } catch (error) {
     console.error("Failed to get event:", error);
     return null;
@@ -148,7 +181,7 @@ export async function getEventBySlug(slug: string): Promise<GemaEvent | null> {
         .get();
       if (snapshot.empty) return null;
       const doc = snapshot.docs[0];
-      return { id: doc.id, ...doc.data() } as GemaEvent;
+      return serializeEvent({ id: doc.id, ...doc.data() });
     }
     const q = query(
       collection(db, EVENTS_COLLECTION),
@@ -157,7 +190,7 @@ export async function getEventBySlug(slug: string): Promise<GemaEvent | null> {
     const snapshot = await getDocs(q);
     if (snapshot.empty) return null;
     const d = snapshot.docs[0];
-    return { id: d.id, ...d.data() } as GemaEvent;
+    return serializeEvent({ id: d.id, ...d.data() });
   } catch (error) {
     console.error("Failed to get event by slug:", error);
     return null;
@@ -292,7 +325,7 @@ export async function validateTicket(
 
       if (snapshot.empty) return { success: false, error: "Código no encontrado" };
       const d = snapshot.docs[0];
-      ticket = { id: d.id, ...d.data() } as Ticket;
+      ticket = serializeTicket({ id: d.id, ...d.data() });
       ticketRef = d.ref;
     } else {
       const q = query(
@@ -302,7 +335,7 @@ export async function validateTicket(
       const snapshot = await getDocs(q);
       if (snapshot.empty) return { success: false, error: "Código no encontrado" };
       const d = snapshot.docs[0];
-      ticket = { id: d.id, ...d.data() } as Ticket;
+      ticket = serializeTicket({ id: d.id, ...d.data() });
       clientTicketId = d.id;
     }
 
@@ -344,7 +377,7 @@ export async function getEventTickets(eventId: string): Promise<Ticket[]> {
         .where("eventId", "==", eventId)
         .orderBy("createdAt", "desc")
         .get();
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Ticket);
+      return snapshot.docs.map((doc) => serializeTicket({ id: doc.id, ...doc.data() }));
     }
 
     const q = query(
@@ -353,7 +386,7 @@ export async function getEventTickets(eventId: string): Promise<Ticket[]> {
       orderBy("createdAt", "desc")
     );
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Ticket);
+    return snapshot.docs.map((doc) => serializeTicket({ id: doc.id, ...doc.data() }));
   } catch (error) {
     console.error("Failed to get event tickets:", error);
     return [];
