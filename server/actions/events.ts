@@ -280,7 +280,12 @@ export async function purchaseTicket(
     }
 
     // Send ticket email with QR
-    const eventDate = event.date && "toDate" in event.date ? event.date.toDate() : new Date(event.date as unknown as string);
+    const dateVal = event.date as unknown as { seconds: number } | { toDate: () => Date } | string;
+    const eventDate = typeof dateVal === "object" && dateVal !== null && "seconds" in dateVal
+      ? new Date(dateVal.seconds * 1000)
+      : typeof dateVal === "object" && dateVal !== null && "toDate" in dateVal
+      ? dateVal.toDate()
+      : new Date(dateVal as string);
     await sendTicketEmail(input.buyerEmail, {
       code,
       eventTitle: event.title,
