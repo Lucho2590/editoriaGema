@@ -34,10 +34,12 @@ export default function ValidarEntradaPage() {
 
   function formatTicketDate(ticket: TicketType): string {
     try {
-      const d =
-        ticket.eventDate && "toDate" in ticket.eventDate
-          ? ticket.eventDate.toDate()
-          : new Date(ticket.eventDate as unknown as string);
+      const dateVal = ticket.eventDate as unknown as { seconds: number } | { toDate: () => Date } | string;
+      const d = typeof dateVal === "object" && dateVal !== null && "seconds" in dateVal
+        ? new Date(dateVal.seconds * 1000)
+        : typeof dateVal === "object" && dateVal !== null && "toDate" in dateVal
+        ? dateVal.toDate()
+        : new Date(dateVal as string);
       return new Intl.DateTimeFormat("es-AR", {
         weekday: "long",
         year: "numeric",
