@@ -6,6 +6,9 @@ import { PurchaseConfirmationEmail } from "@/components/email/PurchaseConfirmati
 import { DownloadDeliveryEmail } from "@/components/email/DownloadDelivery";
 import { AdminNotificationEmail } from "@/components/email/AdminNotification";
 import { WelcomeEmail } from "@/components/email/WelcomeEmail";
+import { TicketEmail } from "@/components/email/TicketEmail";
+import { generateQRDataUrl } from "@/lib/qr";
+import { formatDate } from "@/lib/utils";
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@gema-editorial.com";
 
@@ -39,6 +42,38 @@ export async function sendDownloadEmail(to: string, order: Order, downloadLinks:
     to,
     subject: "Tus libros digitales están listos - GEMA",
     react: DownloadDeliveryEmail({ order, downloadLinks }),
+  });
+}
+
+/**
+ * Send ticket email with QR code
+ */
+export async function sendTicketEmail(
+  to: string,
+  ticket: {
+    code: string;
+    eventTitle: string;
+    eventDate: Date;
+    eventLocation: string;
+    buyerName?: string;
+    price: number;
+  }
+) {
+  const qrDataUrl = await generateQRDataUrl(ticket.code);
+  const formattedDate = formatDate(ticket.eventDate);
+
+  return sendEmail({
+    to,
+    subject: `Tu entrada para ${ticket.eventTitle} - GEMA`,
+    react: TicketEmail({
+      code: ticket.code,
+      eventTitle: ticket.eventTitle,
+      eventDate: formattedDate,
+      eventLocation: ticket.eventLocation,
+      buyerName: ticket.buyerName,
+      price: ticket.price,
+      qrDataUrl,
+    }),
   });
 }
 

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { Book, ShoppingBag, Users, BarChart3, Settings, LogOut, UserCog } from "lucide-react";
+import { Book, ShoppingBag, Users, BarChart3, Settings, LogOut, UserCog, Calendar, ScanLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -13,6 +13,8 @@ const navigation = [
   { href: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag },
   { href: "/admin/clientes", label: "Clientes", icon: Users },
   { href: "/admin/usuarios", label: "Administradores", icon: UserCog },
+  { href: "/admin/eventos", label: "Eventos", icon: Calendar },
+  { href: "/admin/validar-entrada", label: "Validar entrada", icon: ScanLine },
 ];
 
 export default function AdminLayout({
