@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { Book, ShoppingBag, Users, BarChart3, Settings, LogOut, UserCog, Calendar, ScanLine } from "lucide-react";
+import { Book, ShoppingBag, Users, BarChart3, LogOut, UserCog, Calendar, ScanLine, CreditCard, ExternalLink, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -15,6 +15,7 @@ const navigation = [
   { href: "/admin/usuarios", label: "Administradores", icon: UserCog },
   { href: "/admin/eventos", label: "Eventos", icon: Calendar },
   { href: "/admin/validar-entrada", label: "Validar entrada", icon: ScanLine },
+  { href: "/admin/configuracion", label: "Configuración", icon: Settings },
 ];
 
 export default function AdminLayout({
@@ -72,6 +73,24 @@ export default function AdminLayout({
               {item.label}
             </Link>
           ))}
+
+          <div className="mt-6 pt-4 border-t border-gema-gray-800">
+            <p className="px-6 mb-2 text-caption uppercase tracking-wider text-gema-gray-500">
+              Integraciones
+            </p>
+            <a
+              href="https://www.mercadopago.com.ar/developers/panel"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-between gap-3 px-6 py-3 text-small text-gema-gray-400 hover:text-gema-white hover:bg-gema-gray-900 transition-colors"
+            >
+              <span className="flex items-center gap-3">
+                <CreditCard size={18} />
+                MercadoPago
+              </span>
+              <ExternalLink size={14} />
+            </a>
+          </div>
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-6 border-t border-gema-gray-800">

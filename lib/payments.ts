@@ -1,16 +1,23 @@
 import Stripe from "stripe";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import { PaymentProvider, OrderItem } from "@/types";
+import { getMercadoPagoSettings } from "@/server/actions/settings";
 
 // Initialize Stripe
 const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2024-04-10" })
   : null;
 
-// Initialize MercadoPago
-const mercadopago = process.env.MERCADOPAGO_ACCESS_TOKEN
-  ? new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN })
-  : null;
+async function getMercadoPagoClient(): Promise<MercadoPagoConfig | null> {
+  const settings = await getMercadoPagoSettings();
+  if (settings) {
+    return new MercadoPagoConfig({ accessToken: settings.accessToken });
+  }
+  if (process.env.MERCADOPAGO_ACCESS_TOKEN) {
+    return new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN });
+  }
+  return null;
+}
 
 export interface CreatePaymentParams {
   provider: PaymentProvider;
@@ -106,6 +113,7 @@ async function createStripePayment(params: Omit<CreatePaymentParams, "provider">
 }
 
 async function createMercadoPagoPayment(params: Omit<CreatePaymentParams, "provider">): Promise<PaymentResult> {
+  const mercadopago = await getMercadoPagoClient();
   if (!mercadopago) {
     return { success: false, error: "MercadoPago is not configured" };
   }
@@ -173,6 +181,7 @@ export function verifyStripeWebhook(payload: string, signature: string): Stripe.
  * Get MercadoPago payment details
  */
 export async function getMercadoPagoPayment(paymentId: string) {
+  const mercadopago = await getMercadoPagoClient();
   if (!mercadopago) {
     return null;
   }
