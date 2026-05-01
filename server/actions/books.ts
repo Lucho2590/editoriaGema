@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { adminDb, isAdminReady } from "@/lib/firebase-admin";
 import { db } from "@/lib/firebase";
 import {
@@ -194,13 +195,17 @@ export async function createBook(input: BookInput): Promise<{ success: boolean; 
       updatedAt: isAdminReady ? Timestamp.now() : ClientTimestamp.now(),
     };
 
+    let bookId: string;
     if (!isAdminReady || !adminDb) {
       const docRef = await addDoc(collection(db, BOOKS_COLLECTION), bookData);
-      return { success: true, bookId: docRef.id };
+      bookId = docRef.id;
+    } else {
+      const docRef = await adminDb.collection(BOOKS_COLLECTION).add(bookData);
+      bookId = docRef.id;
     }
 
-    const docRef = await adminDb.collection(BOOKS_COLLECTION).add(bookData);
-    return { success: true, bookId: docRef.id };
+    revalidateBookPaths(slug);
+    return { success: true, bookId };
   } catch (error) {
     console.error("Failed to create book:", error);
     return { success: false, error: "Failed to create book" };
@@ -222,6 +227,8 @@ export async function updateBook(
       }
     }
 
+    const previous = await getBookById(id);
+
     const updateData = {
       ...input,
       updatedAt: isAdminReady ? Timestamp.now() : ClientTimestamp.now(),
@@ -229,10 +236,12 @@ export async function updateBook(
 
     if (!isAdminReady || !adminDb) {
       await updateDoc(doc(db, BOOKS_COLLECTION, id), updateData);
-      return { success: true };
+    } else {
+      await adminDb.collection(BOOKS_COLLECTION).doc(id).update(updateData);
     }
 
-    await adminDb.collection(BOOKS_COLLECTION).doc(id).update(updateData);
+    revalidateBookPaths(previous?.slug, input.slug);
+    revalidatePath(`/admin/libros/${id}`);
     return { success: true };
   } catch (error) {
     console.error("Failed to update book:", error);
@@ -245,16 +254,31 @@ export async function updateBook(
  */
 export async function deleteBook(id: string): Promise<{ success: boolean; error?: string }> {
   try {
+    const previous = await getBookById(id);
+
     if (!isAdminReady || !adminDb) {
       await deleteDoc(doc(db, BOOKS_COLLECTION, id));
-      return { success: true };
+    } else {
+      await adminDb.collection(BOOKS_COLLECTION).doc(id).delete();
     }
 
-    await adminDb.collection(BOOKS_COLLECTION).doc(id).delete();
+    revalidateBookPaths(previous?.slug);
     return { success: true };
   } catch (error) {
     console.error("Failed to delete book:", error);
     return { success: false, error: "Failed to delete book" };
+  }
+}
+
+/**
+ * Invalidate Next.js cache for all pages that show book data
+ */
+function revalidateBookPaths(...slugs: (string | undefined)[]) {
+  revalidatePath("/");
+  revalidatePath("/catalogo");
+  revalidatePath("/admin/libros");
+  for (const slug of slugs) {
+    if (slug) revalidatePath(`/libro/${slug}`);
   }
 }
 
