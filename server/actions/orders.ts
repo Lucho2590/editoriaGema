@@ -16,9 +16,9 @@ import {
   Timestamp as ClientTimestamp
 } from "firebase/firestore";
 import { Timestamp } from "firebase-admin/firestore";
-import { Order, OrderInput, OrderItem, PaymentStatus, DownloadLink, PaymentProvider } from "@/types";
+import { Order, OrderInput, OrderItem, PaymentStatus, DownloadLink } from "@/types";
 import { sendPurchaseConfirmation, sendDownloadEmail, sendAdminNotification } from "./emails";
-import { createPayment, CreatePaymentParams } from "@/lib/payments";
+import { createPayment } from "@/lib/payments";
 
 const ORDERS_COLLECTION = "orders";
 const USER_LIBRARY_COLLECTION = "user_library";
@@ -72,57 +72,47 @@ export async function createOrder(input: OrderInput): Promise<{ success: boolean
 }
 
 /**
- * Update order payment status
+ * Update order payment status.
+ *
+ * Idempotent: if the order is already in `status` and has the same paymentId,
+ * this is a no-op. The transition from non-completed → completed triggers
+ * `processCompletedOrder` exactly once (gated by `emailSent`).
  */
 export async function updateOrderPayment(
   orderId: string,
   paymentId: string,
-  status: PaymentStatus
-): Promise<{ success: boolean; error?: string }> {
+  status: PaymentStatus,
+  extra?: { providerStatus?: string; preferenceId?: string }
+): Promise<{ success: boolean; error?: string; skipped?: boolean }> {
   try {
     const now = isAdminReady ? Timestamp.now() : ClientTimestamp.now();
+    const useAdmin = isAdminReady && adminDb;
 
-    if (!isAdminReady || !adminDb) {
-      const orderRef = doc(db, ORDERS_COLLECTION, orderId);
-      const orderSnap = await getDoc(orderRef);
+    const order = await getOrder(orderId);
+    if (!order) return { success: false, error: "Order not found" };
 
-      if (!orderSnap.exists()) {
-        return { success: false, error: "Order not found" };
-      }
-
-      const order = { id: orderSnap.id, ...orderSnap.data() } as Order;
-
-      await updateDoc(orderRef, {
-        paymentId,
-        paymentStatus: status,
-        orderStatus: status === "completed" ? "paid" : order.orderStatus,
-        updatedAt: now,
-      });
-
-      if (status === "completed") {
-        await processCompletedOrder(orderId);
-      }
-
-      return { success: true };
+    const sameStatus = order.paymentStatus === status;
+    const samePayment = !order.paymentId || order.paymentId === paymentId;
+    if (sameStatus && samePayment && order.emailSent) {
+      return { success: true, skipped: true };
     }
 
-    const orderRef = adminDb.collection(ORDERS_COLLECTION).doc(orderId);
-    const orderDoc = await orderRef.get();
-
-    if (!orderDoc.exists) {
-      return { success: false, error: "Order not found" };
-    }
-
-    const order = { id: orderDoc.id, ...orderDoc.data() } as Order;
-
-    await orderRef.update({
+    const update: Record<string, unknown> = {
       paymentId,
       paymentStatus: status,
       orderStatus: status === "completed" ? "paid" : order.orderStatus,
-      updatedAt: Timestamp.now(),
-    });
+      updatedAt: now,
+    };
+    if (extra?.providerStatus) update.providerStatus = extra.providerStatus;
+    if (extra?.preferenceId) update.preferenceId = extra.preferenceId;
 
-    if (status === "completed") {
+    if (useAdmin) {
+      await adminDb!.collection(ORDERS_COLLECTION).doc(orderId).update(update);
+    } else {
+      await updateDoc(doc(db, ORDERS_COLLECTION, orderId), update);
+    }
+
+    if (status === "completed" && !order.emailSent) {
       await processCompletedOrder(orderId);
     }
 
@@ -293,29 +283,59 @@ function calculateShipping(country?: string): number {
  */
 export async function createOrderAndPayment(
   input: OrderInput,
-  paymentParams: { successUrl: string; cancelUrl: string }
-): Promise<{ success: boolean; checkoutUrl?: string; error?: string }> {
+  paymentParams: { successUrl: string; failureUrl: string; pendingUrl: string }
+): Promise<{ success: boolean; checkoutUrl?: string; orderId?: string; error?: string }> {
   try {
     const orderResult = await createOrder(input);
     if (!orderResult.success || !orderResult.orderId) {
       return { success: false, error: orderResult.error || "Failed to create order" };
     }
 
+    const order = await getOrder(orderResult.orderId);
+    if (!order) {
+      return { success: false, error: "Order not found after creation" };
+    }
+
     const paymentResult = await createPayment({
       provider: input.paymentProvider,
       orderId: orderResult.orderId,
       items: input.items,
-      total: input.items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+      subtotal: order.subtotal,
+      shippingCost: order.shippingCost,
       customerEmail: input.userEmail,
+      shippingAddress: input.shippingAddress,
       successUrl: paymentParams.successUrl,
-      cancelUrl: paymentParams.cancelUrl,
+      failureUrl: paymentParams.failureUrl,
+      pendingUrl: paymentParams.pendingUrl,
     });
 
     if (!paymentResult.success || !paymentResult.checkoutUrl) {
       return { success: false, error: paymentResult.error || "Failed to create payment" };
     }
 
-    return { success: true, checkoutUrl: paymentResult.checkoutUrl };
+    if (paymentResult.paymentId) {
+      try {
+        if (isAdminReady && adminDb) {
+          await adminDb.collection(ORDERS_COLLECTION).doc(orderResult.orderId).update({
+            preferenceId: paymentResult.paymentId,
+            updatedAt: Timestamp.now(),
+          });
+        } else {
+          await updateDoc(doc(db, ORDERS_COLLECTION, orderResult.orderId), {
+            preferenceId: paymentResult.paymentId,
+            updatedAt: ClientTimestamp.now(),
+          });
+        }
+      } catch (err) {
+        console.error("Failed to store preferenceId on order:", err);
+      }
+    }
+
+    return {
+      success: true,
+      checkoutUrl: paymentResult.checkoutUrl,
+      orderId: orderResult.orderId,
+    };
   } catch (error) {
     console.error("Failed to create order and payment:", error);
     return { success: false, error: "Failed to process payment" };

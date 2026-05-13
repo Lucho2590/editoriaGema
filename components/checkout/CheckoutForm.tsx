@@ -16,8 +16,7 @@ import { trackCheckoutStarted, trackPurchaseCompleted } from "@/lib/analytics";
 export function CheckoutForm() {
   const router = useRouter();
   const { user } = useAuth();
-  const { items, removeItem, updateQuantity, getSubtotal, clearCart } =
-    useCartStore();
+  const { items, removeItem, updateQuantity, getSubtotal } = useCartStore();
 
   const [step, setStep] = useState<"cart" | "info" | "payment">("cart");
   const [loading, setLoading] = useState(false);
@@ -67,7 +66,7 @@ export function CheckoutForm() {
     setStep("payment");
   };
 
-  const isDev = process.env.NEXT_PUBLIC_APP_URL?.includes("localhost") ?? false;
+  const isDev = process.env.NODE_ENV !== "production";
 
   const handleSimulatePayment = async () => {
     setLoading(true);
@@ -94,8 +93,7 @@ export function CheckoutForm() {
       }
 
       trackPurchaseCompleted(result.orderId, total, items.length);
-      clearCart();
-      router.push("/checkout/success");
+      router.push(`/checkout/success?external_reference=${result.orderId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al simular el pago");
     } finally {
@@ -110,6 +108,7 @@ export function CheckoutForm() {
 
 
     try {
+      const origin = window.location.origin;
       const result = await createOrderAndPayment(
         {
           userEmail: email,
@@ -126,8 +125,9 @@ export function CheckoutForm() {
           shippingAddress: hasPrintItems ? shippingInfo : undefined,
         },
         {
-          successUrl: `${window.location.origin}/checkout/success`,
-          cancelUrl: `${window.location.origin}/checkout`,
+          successUrl: `${origin}/checkout/success`,
+          failureUrl: `${origin}/checkout/failure`,
+          pendingUrl: `${origin}/checkout/pending`,
         }
       );
 
@@ -135,7 +135,6 @@ export function CheckoutForm() {
         throw new Error(result.error || "Error al procesar el pago");
       }
 
-      clearCart();
       window.location.href = result.checkoutUrl;
     } catch (err) {
       setError(

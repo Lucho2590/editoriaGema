@@ -1,11 +1,38 @@
 import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// Register custom font-size utilities so tailwind-merge doesn't strip them when
+// combined with text-color utilities. Without this, classes like `text-small`
+// (a font-size in @theme) collide with `text-gema-white` (a color) and the
+// later one wins — typically erasing the color and leaving text invisible.
+const customTwMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      "font-size": [
+        {
+          text: [
+            "display-xl",
+            "display-lg",
+            "display",
+            "heading-xl",
+            "heading-lg",
+            "heading",
+            "body-lg",
+            "body",
+            "small",
+            "caption",
+          ],
+        },
+      ],
+    },
+  },
+});
 
 /**
  * Merge Tailwind classes with clsx
  */
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+  return customTwMerge(clsx(inputs));
 }
 
 /**
