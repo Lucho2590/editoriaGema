@@ -12,13 +12,15 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-black text-white hover:bg-gema-gray-600 active:bg-gema-gray-600",
+          "bg-gema-black text-gema-white hover:bg-gema-gray-600 active:bg-gema-gray-600",
         secondary:
-          "bg-transparent text-gema-black border border-gema-black hover:bg-gema-black hover:text-white",
-        ghost: "bg-transparent text-gema-white hover:text-gema-white hover:bg-gema-gray-600/10",
+          "bg-transparent text-gema-black border border-gema-black hover:bg-gema-black hover:text-gema-white",
+        ghost:
+          "bg-transparent text-gema-black hover:bg-gema-gray-600/10",
         destructive:
-          "bg-red-500 text-white hover:bg-red-600 active:bg-red-700",
-        link: "text-white underline-offset-4 hover:underline",
+          "bg-red-500 text-gema-white hover:bg-red-600 active:bg-red-700",
+        link:
+          "text-gema-black underline-offset-4 hover:underline",
       },
       size: {
         sm: "h-9 px-4 text-caption",

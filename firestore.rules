@@ -22,13 +22,26 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // Orders collection - user can read own, admin can read all
+    // Orders collection - user can read own, admin can read all.
+    // Create stays open so server actions can fall back to client SDK in dev
+    // when Admin SDK isn't configured; update/delete are admin-only.
     match /orders/{orderId} {
       allow read: if isAdmin() ||
         (isAuthenticated() && resource.data.userEmail == request.auth.token.email);
-      allow create: if true; // Allow checkout without auth
+      allow create: if true;
       allow update: if isAdmin();
       allow delete: if isAdmin();
+
+      // Webhook audit trail — only the server (Admin SDK) writes; admins can read for debugging
+      match /events/{eventId} {
+        allow read: if isAdmin();
+        allow write: if false;
+      }
+    }
+
+    // App settings (MercadoPago credentials, etc.) — admin only
+    match /settings/{settingId} {
+      allow read, write: if isAdmin();
     }
 
     // Users collection

@@ -8,26 +8,33 @@ import { Timestamp } from "firebase-admin/firestore";
 const SETTINGS_COLLECTION = "settings";
 const MP_DOC_ID = "mercadopago";
 
-export interface MercadoPagoSettings {
+export type MercadoPagoMode = "test" | "production";
+
+export interface MercadoPagoModeCredentials {
   accessToken: string;
-  refreshToken: string;
-  publicKey: string;
-  userId: number;
-  liveMode: boolean;
-  expiresAt: string;
-  connectedAt: string;
-  connectedBy?: string;
+  webhookSecret: string;
+}
+
+export interface MercadoPagoSettings {
+  activeMode: MercadoPagoMode;
+  test?: MercadoPagoModeCredentials;
+  production?: MercadoPagoModeCredentials;
+  updatedAt: string;
+  updatedBy?: string;
+}
+
+export interface MercadoPagoActive {
+  mode: MercadoPagoMode;
+  accessToken: string;
+  webhookSecret: string;
 }
 
 interface MercadoPagoSettingsRaw {
-  accessToken: string;
-  refreshToken: string;
-  publicKey: string;
-  userId: number;
-  liveMode: boolean;
-  expiresAt: Timestamp | ClientTimestamp;
-  connectedAt: Timestamp | ClientTimestamp;
-  connectedBy?: string;
+  activeMode?: MercadoPagoMode;
+  test?: MercadoPagoModeCredentials;
+  production?: MercadoPagoModeCredentials;
+  updatedAt?: Timestamp | ClientTimestamp;
+  updatedBy?: string;
 }
 
 function serializeTimestamp(ts: unknown): string {
@@ -43,81 +50,205 @@ function serializeTimestamp(ts: unknown): string {
   return new Date().toISOString();
 }
 
+async function readRawSettings(): Promise<MercadoPagoSettingsRaw | null> {
+  if (isAdminReady && adminDb) {
+    const snap = await adminDb.collection(SETTINGS_COLLECTION).doc(MP_DOC_ID).get();
+    if (!snap.exists) return null;
+    return snap.data() as MercadoPagoSettingsRaw;
+  }
+  const snap = await getDoc(doc(db, SETTINGS_COLLECTION, MP_DOC_ID));
+  if (!snap.exists()) return null;
+  return snap.data() as MercadoPagoSettingsRaw;
+}
+
+async function writeRawSettings(data: Record<string, unknown>): Promise<void> {
+  if (isAdminReady && adminDb) {
+    await adminDb.collection(SETTINGS_COLLECTION).doc(MP_DOC_ID).set(data, { merge: true });
+    return;
+  }
+  await setDoc(doc(db, SETTINGS_COLLECTION, MP_DOC_ID), data, { merge: true });
+}
+
+function nowTimestamp(): Timestamp | ClientTimestamp {
+  return isAdminReady ? Timestamp.now() : ClientTimestamp.now();
+}
+
+function maskCredentials(creds: MercadoPagoModeCredentials | undefined): MercadoPagoModeCredentials | undefined {
+  if (!creds) return undefined;
+  return {
+    accessToken: maskSecret(creds.accessToken),
+    webhookSecret: maskSecret(creds.webhookSecret),
+  };
+}
+
+function maskSecret(value: string): string {
+  if (!value) return "";
+  if (value.length <= 8) return "••••";
+  return `${value.slice(0, 6)}••••${value.slice(-4)}`;
+}
+
+function validatePrefix(mode: MercadoPagoMode, accessToken: string): string | null {
+  // MercadoPago unificó el formato: tanto las credenciales de pruebas como las de
+  // producción empiezan con APP_USR-. La diferencia está solo en qué sección del
+  // panel las copiás. Aceptamos también TEST- (formato legacy) para el modo test.
+  const validPrefixes =
+    mode === "test" ? ["APP_USR-", "TEST-"] : ["APP_USR-"];
+  const matches = validPrefixes.some((p) => accessToken.startsWith(p));
+  if (!matches) {
+    return mode === "test"
+      ? "El Access Token de Pruebas debe empezar con APP_USR- o TEST-"
+      : "El Access Token de Producción debe empezar con APP_USR-";
+  }
+  return null;
+}
+
+/**
+ * Returns settings with credentials masked — safe to expose to the admin UI.
+ */
 export async function getMercadoPagoSettings(): Promise<MercadoPagoSettings | null> {
   try {
-    let raw: MercadoPagoSettingsRaw | null = null;
+    const raw = await readRawSettings();
+    if (!raw) return null;
 
-    if (isAdminReady && adminDb) {
-      const snap = await adminDb.collection(SETTINGS_COLLECTION).doc(MP_DOC_ID).get();
-      if (!snap.exists) return null;
-      raw = snap.data() as MercadoPagoSettingsRaw;
-    } else {
-      const snap = await getDoc(doc(db, SETTINGS_COLLECTION, MP_DOC_ID));
-      if (!snap.exists()) return null;
-      raw = snap.data() as MercadoPagoSettingsRaw;
-    }
-
-    const settings: MercadoPagoSettings = {
-      accessToken: raw.accessToken,
-      refreshToken: raw.refreshToken,
-      publicKey: raw.publicKey,
-      userId: raw.userId,
-      liveMode: raw.liveMode,
-      expiresAt: serializeTimestamp(raw.expiresAt),
-      connectedAt: serializeTimestamp(raw.connectedAt),
-      connectedBy: raw.connectedBy,
+    return {
+      activeMode: raw.activeMode || "test",
+      test: maskCredentials(raw.test),
+      production: maskCredentials(raw.production),
+      updatedAt: serializeTimestamp(raw.updatedAt),
+      updatedBy: raw.updatedBy,
     };
-
-    const expiresAt = new Date(settings.expiresAt);
-    const now = new Date();
-    const oneDayMs = 24 * 60 * 60 * 1000;
-
-    if (expiresAt.getTime() - now.getTime() < oneDayMs) {
-      const refreshed = await refreshMercadoPagoToken(settings.refreshToken);
-      if (refreshed) return refreshed;
-    }
-
-    return settings;
   } catch (error) {
     console.error("Failed to get MercadoPago settings:", error);
     return null;
   }
 }
 
-export async function saveMercadoPagoSettings(input: {
-  accessToken: string;
-  refreshToken: string;
-  publicKey: string;
-  userId: number;
-  liveMode: boolean;
-  expiresInSeconds: number;
-  connectedBy?: string;
-}): Promise<{ success: boolean; error?: string }> {
+/**
+ * Returns the credentials of the active mode — used internally by the checkout
+ * and webhook code. Not exposed via the admin UI.
+ */
+export async function getActiveMercadoPago(): Promise<MercadoPagoActive | null> {
   try {
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + input.expiresInSeconds * 1000);
+    const raw = await readRawSettings();
+    if (!raw) return null;
+    const mode: MercadoPagoMode = raw.activeMode || "test";
+    const creds = raw[mode];
+    if (!creds || !creds.accessToken || !creds.webhookSecret) return null;
+    return { mode, accessToken: creds.accessToken, webhookSecret: creds.webhookSecret };
+  } catch (error) {
+    console.error("Failed to get active MercadoPago credentials:", error);
+    return null;
+  }
+}
 
-    const data = {
-      accessToken: input.accessToken,
-      refreshToken: input.refreshToken,
-      publicKey: input.publicKey,
-      userId: input.userId,
-      liveMode: input.liveMode,
-      expiresAt: isAdminReady ? Timestamp.fromDate(expiresAt) : ClientTimestamp.fromDate(expiresAt),
-      connectedAt: isAdminReady ? Timestamp.fromDate(now) : ClientTimestamp.fromDate(now),
-      ...(input.connectedBy ? { connectedBy: input.connectedBy } : {}),
+/**
+ * Returns both credential sets (raw, unmasked). Only call from server-side
+ * webhook handler where we need to try both secrets for signature verification.
+ */
+export async function getMercadoPagoSecrets(): Promise<{
+  activeMode: MercadoPagoMode;
+  test?: MercadoPagoModeCredentials;
+  production?: MercadoPagoModeCredentials;
+} | null> {
+  try {
+    const raw = await readRawSettings();
+    if (!raw) return null;
+    return {
+      activeMode: raw.activeMode || "test",
+      test: raw.test,
+      production: raw.production,
     };
+  } catch (error) {
+    console.error("Failed to get MercadoPago secrets:", error);
+    return null;
+  }
+}
 
-    if (isAdminReady && adminDb) {
-      await adminDb.collection(SETTINGS_COLLECTION).doc(MP_DOC_ID).set(data);
-    } else {
-      await setDoc(doc(db, SETTINGS_COLLECTION, MP_DOC_ID), data);
-    }
+export async function saveMercadoPagoCredentials(input: {
+  mode: MercadoPagoMode;
+  accessToken: string;
+  webhookSecret: string;
+  updatedBy?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const accessToken = input.accessToken.trim();
+  const webhookSecret = input.webhookSecret.trim();
 
+  if (!accessToken || !webhookSecret) {
+    return { success: false, error: "Access Token y Webhook Secret son obligatorios" };
+  }
+
+  const prefixError = validatePrefix(input.mode, accessToken);
+  if (prefixError) return { success: false, error: prefixError };
+
+  try {
+    await writeRawSettings({
+      [input.mode]: { accessToken, webhookSecret },
+      updatedAt: nowTimestamp(),
+      ...(input.updatedBy ? { updatedBy: input.updatedBy } : {}),
+    });
     return { success: true };
   } catch (error) {
-    console.error("Failed to save MercadoPago settings:", error);
-    return { success: false, error: "Failed to save settings" };
+    console.error("Failed to save MercadoPago credentials:", error);
+    return { success: false, error: "No se pudo guardar las credenciales" };
+  }
+}
+
+export async function setMercadoPagoActiveMode(input: {
+  mode: MercadoPagoMode;
+  updatedBy?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const raw = await readRawSettings();
+    const block = raw?.[input.mode];
+    if (!block || !block.accessToken || !block.webhookSecret) {
+      return {
+        success: false,
+        error: `Falta configurar las credenciales de ${input.mode === "test" ? "Pruebas" : "Producción"} antes de activar el modo`,
+      };
+    }
+
+    await writeRawSettings({
+      activeMode: input.mode,
+      updatedAt: nowTimestamp(),
+      ...(input.updatedBy ? { updatedBy: input.updatedBy } : {}),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to set MercadoPago active mode:", error);
+    return { success: false, error: "No se pudo cambiar el modo activo" };
+  }
+}
+
+export async function clearMercadoPagoMode(input: {
+  mode: MercadoPagoMode;
+  updatedBy?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (isAdminReady && adminDb) {
+      const ref = adminDb.collection(SETTINGS_COLLECTION).doc(MP_DOC_ID);
+      const FieldValue = (await import("firebase-admin/firestore")).FieldValue;
+      await ref.update({
+        [input.mode]: FieldValue.delete(),
+        updatedAt: Timestamp.now(),
+        ...(input.updatedBy ? { updatedBy: input.updatedBy } : {}),
+      });
+    } else {
+      const ref = doc(db, SETTINGS_COLLECTION, MP_DOC_ID);
+      const { deleteField } = await import("firebase/firestore");
+      await setDoc(
+        ref,
+        {
+          [input.mode]: deleteField(),
+          updatedAt: ClientTimestamp.now(),
+          ...(input.updatedBy ? { updatedBy: input.updatedBy } : {}),
+        },
+        { merge: true }
+      );
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to clear MercadoPago mode:", error);
+    return { success: false, error: "No se pudo limpiar las credenciales" };
   }
 }
 
@@ -132,61 +263,5 @@ export async function disconnectMercadoPago(): Promise<{ success: boolean; error
   } catch (error) {
     console.error("Failed to disconnect MercadoPago:", error);
     return { success: false, error: "Failed to disconnect" };
-  }
-}
-
-async function refreshMercadoPagoToken(refreshToken: string): Promise<MercadoPagoSettings | null> {
-  const clientId = process.env.MERCADOPAGO_CLIENT_ID;
-  const clientSecret = process.env.MERCADOPAGO_CLIENT_SECRET;
-
-  if (!clientId || !clientSecret) {
-    console.error("MERCADOPAGO_CLIENT_ID or MERCADOPAGO_CLIENT_SECRET not configured");
-    return null;
-  }
-
-  try {
-    const response = await fetch("https://api.mercadopago.com/oauth/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret,
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-      }),
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Failed to refresh MP token:", response.status, text);
-      return null;
-    }
-
-    const data = await response.json();
-
-    const result = await saveMercadoPagoSettings({
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      publicKey: data.public_key,
-      userId: data.user_id,
-      liveMode: data.live_mode ?? true,
-      expiresInSeconds: data.expires_in,
-    });
-
-    if (!result.success) return null;
-
-    const now = new Date();
-    return {
-      accessToken: data.access_token,
-      refreshToken: data.refresh_token,
-      publicKey: data.public_key,
-      userId: data.user_id,
-      liveMode: data.live_mode ?? true,
-      expiresAt: new Date(now.getTime() + data.expires_in * 1000).toISOString(),
-      connectedAt: now.toISOString(),
-    };
-  } catch (error) {
-    console.error("Error refreshing MP token:", error);
-    return null;
   }
 }
