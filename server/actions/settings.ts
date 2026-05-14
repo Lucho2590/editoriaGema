@@ -7,6 +7,7 @@ import { Timestamp } from "firebase-admin/firestore";
 
 const SETTINGS_COLLECTION = "settings";
 const MP_DOC_ID = "mercadopago";
+const TRANSFER_DOC_ID = "transfer";
 
 export type MercadoPagoMode = "test" | "production";
 
@@ -50,23 +51,31 @@ function serializeTimestamp(ts: unknown): string {
   return new Date().toISOString();
 }
 
-async function readRawSettings(): Promise<MercadoPagoSettingsRaw | null> {
+async function readRawDoc<T = Record<string, unknown>>(docId: string): Promise<T | null> {
   if (isAdminReady && adminDb) {
-    const snap = await adminDb.collection(SETTINGS_COLLECTION).doc(MP_DOC_ID).get();
+    const snap = await adminDb.collection(SETTINGS_COLLECTION).doc(docId).get();
     if (!snap.exists) return null;
-    return snap.data() as MercadoPagoSettingsRaw;
+    return snap.data() as T;
   }
-  const snap = await getDoc(doc(db, SETTINGS_COLLECTION, MP_DOC_ID));
+  const snap = await getDoc(doc(db, SETTINGS_COLLECTION, docId));
   if (!snap.exists()) return null;
-  return snap.data() as MercadoPagoSettingsRaw;
+  return snap.data() as T;
+}
+
+async function writeRawDoc(docId: string, data: Record<string, unknown>): Promise<void> {
+  if (isAdminReady && adminDb) {
+    await adminDb.collection(SETTINGS_COLLECTION).doc(docId).set(data, { merge: true });
+    return;
+  }
+  await setDoc(doc(db, SETTINGS_COLLECTION, docId), data, { merge: true });
+}
+
+async function readRawSettings(): Promise<MercadoPagoSettingsRaw | null> {
+  return readRawDoc<MercadoPagoSettingsRaw>(MP_DOC_ID);
 }
 
 async function writeRawSettings(data: Record<string, unknown>): Promise<void> {
-  if (isAdminReady && adminDb) {
-    await adminDb.collection(SETTINGS_COLLECTION).doc(MP_DOC_ID).set(data, { merge: true });
-    return;
-  }
-  await setDoc(doc(db, SETTINGS_COLLECTION, MP_DOC_ID), data, { merge: true });
+  return writeRawDoc(MP_DOC_ID, data);
 }
 
 function nowTimestamp(): Timestamp | ClientTimestamp {
@@ -263,5 +272,126 @@ export async function disconnectMercadoPago(): Promise<{ success: boolean; error
   } catch (error) {
     console.error("Failed to disconnect MercadoPago:", error);
     return { success: false, error: "Failed to disconnect" };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Transferencia bancaria — settings & helpers
+// ---------------------------------------------------------------------------
+
+export interface TransferSettings {
+  enabled: boolean;
+  bankName: string;
+  accountHolder: string;
+  cuitCuil: string;
+  cbu: string;
+  alias: string;
+  discountPercentage: number;
+  contactEmail: string;
+  instructions: string;
+  updatedAt: string;
+  updatedBy?: string;
+}
+
+interface TransferSettingsRaw {
+  enabled?: boolean;
+  bankName?: string;
+  accountHolder?: string;
+  cuitCuil?: string;
+  cbu?: string;
+  alias?: string;
+  discountPercentage?: number;
+  contactEmail?: string;
+  instructions?: string;
+  updatedAt?: Timestamp | ClientTimestamp;
+  updatedBy?: string;
+}
+
+export async function getTransferSettings(): Promise<TransferSettings | null> {
+  try {
+    const raw = await readRawDoc<TransferSettingsRaw>(TRANSFER_DOC_ID);
+    if (!raw) return null;
+    return {
+      enabled: raw.enabled ?? false,
+      bankName: raw.bankName ?? "",
+      accountHolder: raw.accountHolder ?? "",
+      cuitCuil: raw.cuitCuil ?? "",
+      cbu: raw.cbu ?? "",
+      alias: raw.alias ?? "",
+      discountPercentage: typeof raw.discountPercentage === "number" ? raw.discountPercentage : 0,
+      contactEmail: raw.contactEmail ?? "",
+      instructions: raw.instructions ?? "",
+      updatedAt: serializeTimestamp(raw.updatedAt),
+      updatedBy: raw.updatedBy,
+    };
+  } catch (error) {
+    console.error("Failed to get transfer settings:", error);
+    return null;
+  }
+}
+
+export async function saveTransferSettings(input: {
+  enabled: boolean;
+  bankName: string;
+  accountHolder: string;
+  cuitCuil: string;
+  cbu: string;
+  alias: string;
+  discountPercentage: number;
+  contactEmail: string;
+  instructions: string;
+  updatedBy?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const bankName = input.bankName.trim();
+  const accountHolder = input.accountHolder.trim();
+  const cbu = input.cbu.trim();
+  const alias = input.alias.trim();
+
+  if (input.enabled) {
+    if (!bankName || !accountHolder || (!cbu && !alias)) {
+      return {
+        success: false,
+        error: "Para habilitar Transferencia se requieren banco, titular y al menos CBU o alias",
+      };
+    }
+  }
+
+  const discount = Number(input.discountPercentage);
+  if (Number.isNaN(discount) || discount < 0 || discount > 100) {
+    return { success: false, error: "El descuento debe ser un porcentaje entre 0 y 100" };
+  }
+
+  try {
+    await writeRawDoc(TRANSFER_DOC_ID, {
+      enabled: input.enabled,
+      bankName,
+      accountHolder,
+      cuitCuil: input.cuitCuil.trim(),
+      cbu,
+      alias,
+      discountPercentage: discount,
+      contactEmail: input.contactEmail.trim(),
+      instructions: input.instructions.trim(),
+      updatedAt: nowTimestamp(),
+      ...(input.updatedBy ? { updatedBy: input.updatedBy } : {}),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to save transfer settings:", error);
+    return { success: false, error: "No se pudo guardar la configuración" };
+  }
+}
+
+export async function disableTransfer(updatedBy?: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    await writeRawDoc(TRANSFER_DOC_ID, {
+      enabled: false,
+      updatedAt: nowTimestamp(),
+      ...(updatedBy ? { updatedBy } : {}),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to disable transfer:", error);
+    return { success: false, error: "No se pudo deshabilitar" };
   }
 }

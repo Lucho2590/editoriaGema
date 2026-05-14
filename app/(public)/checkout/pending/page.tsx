@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 interface SearchParams {
   external_reference?: string;
   status?: string;
+  method?: string;
 }
 
 export default async function CheckoutPendingPage({
@@ -23,6 +24,8 @@ export default async function CheckoutPendingPage({
   const params = await searchParams;
   const orderId = params.external_reference;
   const order = orderId ? await getOrder(orderId) : null;
+  const isTransfer =
+    params.method === "transfer" || order?.paymentProvider === "transfer";
 
   return (
     <div className="page-transition">
@@ -39,11 +42,14 @@ export default async function CheckoutPendingPage({
             <Clock className="w-16 h-16 text-amber-500 mx-auto" strokeWidth={1.5} />
           </div>
 
-          <h1 className="font-serif text-heading-xl text-gema-black mb-4">Pago pendiente</h1>
+          <h1 className="font-serif text-heading-xl text-gema-black mb-4">
+            {isTransfer ? "Estamos verificando tu transferencia" : "Pago pendiente"}
+          </h1>
 
           <p className="text-body-lg text-gema-gray-600 mb-4">
-            Si elegiste pagar por Rapipago, transferencia o cualquier método offline, todavía
-            estamos esperando la confirmación de MercadoPago.
+            {isTransfer
+              ? "Recibimos tus datos. En cuanto confirmemos la acreditación bancaria vas a recibir un email."
+              : "Si elegiste pagar por Rapipago, transferencia o cualquier método offline, todavía estamos esperando la confirmación de MercadoPago."}
           </p>
 
           {order && (
@@ -59,12 +65,6 @@ export default async function CheckoutPendingPage({
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/mi-biblioteca"
-              className="inline-block px-8 py-4 border border-gema-black text-gema-black text-small tracking-wide hover:bg-gema-black hover:text-gema-white transition-colors duration-300"
-            >
-              Ir a mi biblioteca
-            </Link>
             <Link
               href="/catalogo"
               className="inline-block px-8 py-4 border border-gema-black text-gema-black text-small tracking-wide hover:bg-gema-black hover:text-gema-white transition-colors duration-300"

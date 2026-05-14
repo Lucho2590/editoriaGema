@@ -145,6 +145,12 @@ async function createMercadoPagoPayment(params: CreatePaymentParams): Promise<Pa
     binary_mode: false,
     expires: true,
     expiration_date_to: expiresAt.toISOString(),
+    // La transferencia bancaria se gestiona por fuera de MP (flujo manual en
+    // /checkout/transferencia + /admin/pedidos). Excluimos bank_transfer del
+    // preference para que MP sólo ofrezca tarjetas y efectivo (Rapipago, etc.).
+    payment_methods: {
+      excluded_payment_types: [{ id: "bank_transfer" }],
+    },
   });
 
   if (!result.ok) {
