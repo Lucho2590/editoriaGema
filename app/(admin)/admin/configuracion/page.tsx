@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { CreditCard, Check, AlertCircle, ExternalLink, Loader2, Copy } from "lucide-react";
+import Image from "next/image";
+import { Check, AlertCircle, ExternalLink, Loader2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import {
@@ -142,12 +143,41 @@ export default function ConfiguracionPage() {
   const prodConfigured = Boolean(settings?.production?.accessToken);
 
   return (
-    <div className="max-w-4xl">
-      <div className="mb-8">
-        <h1 className="font-serif text-heading-xl text-gema-black">Configuración</h1>
-        <p className="text-body text-gema-gray-500 mt-2">
-          Integraciones externas y vinculación de servicios.
-        </p>
+    <div className="max-w-3xl mx-auto">
+      <div className="mb-8 flex items-center gap-4">
+        <Image
+          src="/mercadopago-logo.png"
+          alt="MercadoPago"
+          width={64}
+          height={48}
+          className="h-12 w-auto shrink-0"
+          priority
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="font-serif text-heading-xl text-gema-black">MercadoPago</h1>
+            {!loading && (
+              <span
+                className={`text-caption px-2 py-1 rounded-full ${
+                  activeMode === "production" && prodConfigured
+                    ? "bg-green-100 text-green-800"
+                    : activeMode === "test" && testConfigured
+                    ? "bg-amber-100 text-amber-800"
+                    : "bg-gema-gray-100 text-gema-gray-500"
+                }`}
+              >
+                {activeMode === "production" && prodConfigured
+                  ? "Activo en Producción"
+                  : activeMode === "test" && testConfigured
+                  ? "Activo en Pruebas"
+                  : "Sin configurar"}
+              </span>
+            )}
+          </div>
+          <p className="text-body text-gema-gray-500 mt-2">
+            Credenciales del checkout y webhook de pagos.
+          </p>
+        </div>
       </div>
 
       {status && (
@@ -162,34 +192,7 @@ export default function ConfiguracionPage() {
       )}
 
       <section className="bg-white border border-gema-gray-200 rounded-md p-6">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-gema-gray-50 rounded-md">
-            <CreditCard size={24} className="text-gema-black" />
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between mb-2 gap-4 flex-wrap">
-              <h2 className="font-serif text-heading text-gema-black">MercadoPago</h2>
-              {!loading && (
-                <span
-                  className={`text-caption px-2 py-1 rounded-full ${
-                    activeMode === "production" && prodConfigured
-                      ? "bg-green-100 text-green-800"
-                      : activeMode === "test" && testConfigured
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-gema-gray-100 text-gema-gray-500"
-                  }`}
-                >
-                  {activeMode === "production" && prodConfigured
-                    ? "Activo en Producción"
-                    : activeMode === "test" && testConfigured
-                    ? "Activo en Pruebas"
-                    : "Sin configurar"}
-                </span>
-              )}
-            </div>
-
-            <p className="text-body text-gema-gray-500 mb-6">
+        <p className="text-body text-gema-gray-500 mb-6">
               Pegá las credenciales que sacaste del{" "}
               <a
                 href="https://www.mercadopago.com.ar/developers/panel"
@@ -293,8 +296,6 @@ export default function ConfiguracionPage() {
                 </div>
               </div>
             )}
-          </div>
-        </div>
       </section>
 
       <section className="mt-6 bg-white border border-gema-gray-200 rounded-md p-6">
