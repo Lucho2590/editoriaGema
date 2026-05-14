@@ -21,6 +21,7 @@ A minimalist editorial publishing platform built with Next.js, featuring a digit
 ### Prerequisites
 
 - Node.js 18+
+- pnpm 9+
 - Firebase project
 - Resend account
 - Stripe or MercadoPago account
@@ -31,7 +32,7 @@ A minimalist editorial publishing platform built with Next.js, featuring a digit
 # Clone and install
 git clone <repo-url>
 cd gema-editorial
-npm install
+pnpm install
 
 # Copy environment variables
 cp .env.example .env.local
@@ -39,7 +40,7 @@ cp .env.example .env.local
 # Configure your environment variables in .env.local
 
 # Run development server
-npm run dev
+pnpm dev
 ```
 
 ### Environment Variables
