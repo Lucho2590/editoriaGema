@@ -25,22 +25,22 @@ export function Footer() {
             </h4>
             <nav className="flex flex-col gap-3">
               <Link
+                href="/#quienes-somos"
+                className="text-small text-gema-gray-600 hover:text-gema-black transition-colors duration-300"
+              >
+                ¿Quiénes somos?
+              </Link>
+              <Link
                 href="/catalogo"
                 className="text-small text-gema-gray-600 hover:text-gema-black transition-colors duration-300"
               >
                 Catálogo
               </Link>
               <Link
-                href="/manifiesto"
+                href="/eventos"
                 className="text-small text-gema-gray-600 hover:text-gema-black transition-colors duration-300"
               >
-                Manifiesto
-              </Link>
-              <Link
-                href="/mi-biblioteca"
-                className="text-small text-gema-gray-600 hover:text-gema-black transition-colors duration-300"
-              >
-                Mi Biblioteca
+                Eventos
               </Link>
             </nav>
           </div>
@@ -52,10 +52,10 @@ export function Footer() {
             </h4>
             <nav className="flex flex-col gap-3">
               <a
-                href="mailto:contacto@gema-editorial.com"
-                className="text-small text-gema-gray-600 hover:text-gema-black transition-colors duration-300"
+                href="mailto:Somoseditorialgema@gmail.com"
+                className="text-small text-gema-gray-600 hover:text-gema-black transition-colors duration-300 break-all"
               >
-                contacto@gema-editorial.com
+                Somoseditorialgema@gmail.com
               </a>
               <a
                 href="https://www.instagram.com/editorial_gema"
@@ -64,6 +64,15 @@ export function Footer() {
                 className="text-small text-gema-gray-600 hover:text-gema-black transition-colors duration-300"
               >
                 Instagram
+              </a>
+              {/* TODO: reemplazar con URL real */}
+              <a
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-small text-gema-gray-600 hover:text-gema-black transition-colors duration-300"
+              >
+                LinkedIn
               </a>
             </nav>
           </div>
