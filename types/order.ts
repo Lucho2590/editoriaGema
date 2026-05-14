@@ -7,9 +7,26 @@ export interface FirestoreTimestamp {
   toDate(): Date;
 }
 
-export type PaymentProvider = "stripe" | "mercadopago";
+export type PaymentProvider = "stripe" | "mercadopago" | "transfer";
 export type PaymentStatus = "pending" | "processing" | "completed" | "failed" | "refunded";
 export type OrderStatus = "pending" | "paid" | "shipped" | "delivered" | "cancelled";
+
+export interface OrderDiscount {
+  type: "transfer";
+  percentage: number;
+  amount: number;
+}
+
+export interface TransferDetails {
+  buyerName: string;
+  buyerDni: string;
+  buyerPhone: string;
+  buyerBank: string;
+  buyerAccount: string;
+  receiptUrl?: string;
+  receiptStoragePath?: string;
+  submittedAt: FirestoreTimestamp;
+}
 
 export interface OrderItem {
   bookId: string;
@@ -47,6 +64,9 @@ export interface Order {
   shippingAddress?: ShippingAddress;
   downloadLinks?: DownloadLink[];
   emailSent: boolean;
+  discount?: OrderDiscount;
+  transferDetails?: TransferDetails;
+  transferRejectionReason?: string;
   createdAt: FirestoreTimestamp;
   updatedAt: FirestoreTimestamp;
 }
@@ -66,4 +86,5 @@ export interface OrderInput {
   items: OrderItem[];
   paymentProvider: PaymentProvider;
   shippingAddress?: ShippingAddress;
+  discount?: OrderDiscount;
 }

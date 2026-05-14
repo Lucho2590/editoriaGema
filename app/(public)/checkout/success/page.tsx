@@ -66,14 +66,6 @@ export default async function CheckoutSuccessPage({
           )}
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            {variant.showLibraryCta && (
-              <Link
-                href="/mi-biblioteca"
-                className="inline-block px-8 py-4 bg-gema-black text-gema-white text-small tracking-wide hover:bg-gema-gray-800 transition-colors duration-300"
-              >
-                Ir a mi biblioteca
-              </Link>
-            )}
             <Link
               href="/catalogo"
               className="inline-block px-8 py-4 border border-gema-black text-gema-black text-small tracking-wide hover:bg-gema-black hover:text-gema-white transition-colors duration-300"

@@ -10,10 +10,22 @@ import { getBookPrice, formatBookPrice, PaymentProvider } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { createOrderAndPayment, simulatePayment } from "@/server/actions/orders";
+import {
+  createOrderAndPayment,
+  createTransferOrder,
+  simulatePayment,
+} from "@/server/actions/orders";
 import { trackCheckoutStarted, trackPurchaseCompleted } from "@/lib/analytics";
 
-export function CheckoutForm() {
+interface CheckoutFormProps {
+  transferEnabled: boolean;
+  transferDiscountPercentage: number;
+}
+
+export function CheckoutForm({
+  transferEnabled,
+  transferDiscountPercentage,
+}: CheckoutFormProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { items, removeItem, updateQuantity, getSubtotal } = useCartStore();
@@ -41,7 +53,11 @@ export function CheckoutForm() {
   const hasPrintItems = items.some((item) => item.format === "print");
   const hasDigitalItems = items.some((item) => item.format !== "print");
   const shippingCost = hasPrintItems ? 1500 : 0; // Fixed shipping for Argentina
-  const total = subtotal + shippingCost;
+  const transferDiscount =
+    paymentProvider === "transfer"
+      ? Math.round(((subtotal * (transferDiscountPercentage || 0)) / 100) * 100) / 100
+      : 0;
+  const total = subtotal - transferDiscount + shippingCost;
 
   const handleProceedToInfo = () => {
     if (items.length === 0) return;
@@ -106,21 +122,38 @@ export function CheckoutForm() {
     setLoading(true);
     setError(null);
 
+    const orderItems = items.map((item) => ({
+      bookId: item.bookId,
+      bookTitle: item.book.title,
+      bookAuthor: item.book.author,
+      format: item.format,
+      price: getBookPrice(item.book, item.format),
+      quantity: item.quantity,
+    }));
 
     try {
+      if (paymentProvider === "transfer") {
+        const result = await createTransferOrder({
+          userEmail: email,
+          userId: user?.uid,
+          items: orderItems,
+          shippingAddress: hasPrintItems ? shippingInfo : undefined,
+        });
+
+        if (!result.success || !result.orderId) {
+          throw new Error(result.error || "Error al crear la orden");
+        }
+
+        router.push(`/checkout/transferencia/${result.orderId}`);
+        return;
+      }
+
       const origin = window.location.origin;
       const result = await createOrderAndPayment(
         {
           userEmail: email,
           userId: user?.uid,
-          items: items.map((item) => ({
-            bookId: item.bookId,
-            bookTitle: item.book.title,
-            bookAuthor: item.book.author,
-            format: item.format,
-            price: getBookPrice(item.book, item.format),
-            quantity: item.quantity,
-          })),
+          items: orderItems,
           paymentProvider,
           shippingAddress: hasPrintItems ? shippingInfo : undefined,
         },
@@ -394,24 +427,28 @@ export function CheckoutForm() {
                       />
                       <span className="text-body">MercadoPago</span>
                       <span className="text-small text-gema-gray-500 ml-auto">
-                        Tarjetas, efectivo, transferencia
+                        Tarjetas o dinero en cuenta
                       </span>
                     </label>
 
-                    <label className="flex items-center gap-4 p-4 border border-gema-gray-200 cursor-pointer hover:border-gema-black transition-colors">
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="stripe"
-                        checked={paymentProvider === "stripe"}
-                        onChange={() => setPaymentProvider("stripe")}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-body">Stripe</span>
-                      <span className="text-small text-gema-gray-500 ml-auto">
-                        Tarjetas internacionales
-                      </span>
-                    </label>
+                    {transferEnabled && (
+                      <label className="flex items-center gap-4 p-4 border border-gema-gray-200 cursor-pointer hover:border-gema-black transition-colors">
+                        <input
+                          type="radio"
+                          name="payment"
+                          value="transfer"
+                          checked={paymentProvider === "transfer"}
+                          onChange={() => setPaymentProvider("transfer")}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-body">Transferencia bancaria</span>
+                        <span className="text-small text-gema-gray-500 ml-auto">
+                          {transferDiscountPercentage > 0
+                            ? `${transferDiscountPercentage}% off · acreditación manual`
+                            : "Acreditación manual"}
+                        </span>
+                      </label>
+                    )}
                   </div>
                 </div>
 
@@ -473,6 +510,17 @@ export function CheckoutForm() {
                 {formatCurrency(subtotal)}
               </span>
             </div>
+
+            {transferDiscount > 0 && (
+              <div className="flex justify-between text-small">
+                <span className="text-gema-gray-600">
+                  Descuento por transferencia ({transferDiscountPercentage}%)
+                </span>
+                <span className="text-green-700">
+                  -{formatCurrency(transferDiscount)}
+                </span>
+              </div>
+            )}
 
             {hasPrintItems && (
               <div className="flex justify-between text-small">

@@ -17,8 +17,14 @@ import {
 } from "firebase/firestore";
 import { Timestamp } from "firebase-admin/firestore";
 import { Order, OrderInput, OrderItem, PaymentStatus, DownloadLink } from "@/types";
-import { sendPurchaseConfirmation, sendDownloadEmail, sendAdminNotification } from "./emails";
+import {
+  sendPurchaseConfirmation,
+  sendDownloadEmail,
+  sendAdminNotification,
+  sendTransferSubmittedNotification,
+} from "./emails";
 import { createPayment } from "@/lib/payments";
+import { getTransferSettings } from "./settings";
 
 const ORDERS_COLLECTION = "orders";
 const USER_LIBRARY_COLLECTION = "user_library";
@@ -32,6 +38,7 @@ export async function createOrder(input: OrderInput): Promise<{ success: boolean
     const hasDigitalItems = input.items.some((item) => item.format === "pdf" || item.format === "epub");
     const hasPrintItems = input.items.some((item) => item.format === "print");
     const shippingCost = hasPrintItems ? calculateShipping(input.shippingAddress?.country) : 0;
+    const discountAmount = input.discount?.amount ?? 0;
 
     const now = isAdminReady ? Timestamp.now() : ClientTimestamp.now();
 
@@ -40,7 +47,7 @@ export async function createOrder(input: OrderInput): Promise<{ success: boolean
       items: input.items,
       subtotal,
       shippingCost,
-      total: subtotal + shippingCost,
+      total: subtotal - discountAmount + shippingCost,
       paymentProvider: input.paymentProvider,
       paymentStatus: "pending" as PaymentStatus,
       orderStatus: "pending" as const,
@@ -56,6 +63,9 @@ export async function createOrder(input: OrderInput): Promise<{ success: boolean
     }
     if (input.shippingAddress) {
       order.shippingAddress = input.shippingAddress;
+    }
+    if (input.discount) {
+      order.discount = input.discount;
     }
 
     if (!isAdminReady || !adminDb) {
@@ -449,3 +459,168 @@ export async function getUserOrders(userEmail: string): Promise<Order[]> {
     return [];
   }
 }
+
+// ---------------------------------------------------------------------------
+// Transferencia bancaria — manual checkout flow
+// ---------------------------------------------------------------------------
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/**
+ * Crea una orden con paymentProvider = "transfer". El descuento se calcula
+ * server-side a partir de los settings actuales (el cliente no lo decide).
+ */
+export async function createTransferOrder(
+  input: Omit<OrderInput, "paymentProvider" | "discount">
+): Promise<{ success: boolean; orderId?: string; error?: string }> {
+  const settings = await getTransferSettings();
+  if (!settings || !settings.enabled) {
+    return { success: false, error: "Transferencia no está habilitada" };
+  }
+
+  const subtotal = input.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const percentage = settings.discountPercentage || 0;
+  const amount = round2((subtotal * percentage) / 100);
+
+  return createOrder({
+    ...input,
+    paymentProvider: "transfer",
+    discount:
+      amount > 0
+        ? { type: "transfer", percentage, amount }
+        : undefined,
+  });
+}
+
+interface TransferDetailsInput {
+  buyerName: string;
+  buyerDni: string;
+  buyerPhone: string;
+  buyerBank: string;
+  buyerAccount: string;
+  receipt?: {
+    base64: string;
+    contentType: string;
+    extension: string;
+  };
+}
+
+export async function submitTransferDetails(
+  orderId: string,
+  details: TransferDetailsInput
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const order = await getOrder(orderId);
+    if (!order) return { success: false, error: "Orden no encontrada" };
+    if (order.paymentProvider !== "transfer") {
+      return { success: false, error: "La orden no es de transferencia" };
+    }
+    if (order.paymentStatus === "completed") {
+      return { success: false, error: "La orden ya está pagada" };
+    }
+
+    let receiptUrl: string | undefined;
+    let receiptStoragePath: string | undefined;
+
+    if (details.receipt && isAdminReady && adminStorage) {
+      const ext = (details.receipt.extension || "bin").replace(/[^a-z0-9]/gi, "").toLowerCase();
+      const path = `orders/${orderId}/comprobante.${ext || "bin"}`;
+      const bucket = adminStorage.bucket();
+      const file = bucket.file(path);
+      const buffer = Buffer.from(details.receipt.base64, "base64");
+      await file.save(buffer, {
+        contentType: details.receipt.contentType || "application/octet-stream",
+        resumable: false,
+      });
+      const [signedUrl] = await file.getSignedUrl({
+        action: "read",
+        expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+      });
+      receiptUrl = signedUrl;
+      receiptStoragePath = path;
+    }
+
+    const now = isAdminReady ? Timestamp.now() : ClientTimestamp.now();
+    const transferDetails: Record<string, unknown> = {
+      buyerName: details.buyerName.trim(),
+      buyerDni: details.buyerDni.trim(),
+      buyerPhone: details.buyerPhone.trim(),
+      buyerBank: details.buyerBank.trim(),
+      buyerAccount: details.buyerAccount.trim(),
+      submittedAt: now,
+    };
+    if (receiptUrl) transferDetails.receiptUrl = receiptUrl;
+    if (receiptStoragePath) transferDetails.receiptStoragePath = receiptStoragePath;
+
+    const update: Record<string, unknown> = {
+      transferDetails,
+      paymentStatus: "processing" as PaymentStatus,
+      updatedAt: now,
+    };
+
+    if (isAdminReady && adminDb) {
+      await adminDb.collection(ORDERS_COLLECTION).doc(orderId).update(update);
+    } else {
+      await updateDoc(doc(db, ORDERS_COLLECTION, orderId), update);
+    }
+
+    try {
+      const updated = await getOrder(orderId);
+      if (updated) await sendTransferSubmittedNotification(updated);
+    } catch (notifyErr) {
+      console.error("Failed to notify admin about transfer submission:", notifyErr);
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to submit transfer details:", error);
+    return { success: false, error: "No se pudo enviar los datos" };
+  }
+}
+
+export async function confirmTransferOrder(
+  orderId: string
+): Promise<{ success: boolean; error?: string }> {
+  const order = await getOrder(orderId);
+  if (!order) return { success: false, error: "Orden no encontrada" };
+  if (order.paymentProvider !== "transfer") {
+    return { success: false, error: "La orden no es de transferencia" };
+  }
+
+  const result = await updateOrderPayment(orderId, `transfer_${orderId}`, "completed");
+  if (!result.success) return { success: false, error: result.error };
+  return { success: true };
+}
+
+export async function rejectTransferOrder(
+  orderId: string,
+  reason: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const order = await getOrder(orderId);
+    if (!order) return { success: false, error: "Orden no encontrada" };
+    if (order.paymentProvider !== "transfer") {
+      return { success: false, error: "La orden no es de transferencia" };
+    }
+
+    const now = isAdminReady ? Timestamp.now() : ClientTimestamp.now();
+    const update = {
+      paymentStatus: "failed" as PaymentStatus,
+      transferRejectionReason: reason || "",
+      updatedAt: now,
+    };
+
+    if (isAdminReady && adminDb) {
+      await adminDb.collection(ORDERS_COLLECTION).doc(orderId).update(update);
+    } else {
+      await updateDoc(doc(db, ORDERS_COLLECTION, orderId), update);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to reject transfer order:", error);
+    return { success: false, error: "No se pudo rechazar la orden" };
+  }
+}
+
