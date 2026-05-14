@@ -13,6 +13,12 @@ interface BookDetailProps {
   book: Book;
 }
 
+const FieldLabel = ({ children }: { children: React.ReactNode }) => (
+  <p className="text-caption uppercase tracking-[0.1em] text-gema-gray-400 mb-2">
+    {children}
+  </p>
+);
+
 export function BookDetail({ book }: BookDetailProps) {
   const [selectedFormat, setSelectedFormat] = useState<BookFormat | null>(null);
   const [added, setAdded] = useState(false);
@@ -43,38 +49,49 @@ export function BookDetail({ book }: BookDetailProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
       {/* Cover */}
-      <div className="relative aspect-[3/4] bg-gema-gray-50 animate-slide-in">
-        <Image
-          src={book.coverImage}
-          alt={book.title}
-          fill
-          className="object-cover"
-          priority
-          sizes="(max-width: 1024px) 100vw, 50vw"
-        />
+      <div className="lg:col-span-5">
+        <div className="relative w-full max-h-[600px] aspect-[3/4] bg-gema-gray-50 animate-slide-in mx-auto lg:mx-0 lg:max-w-md">
+          <Image
+            src={book.coverImage}
+            alt={book.title}
+            fill
+            className="object-cover"
+            priority
+            sizes="(max-width: 1024px) 100vw, 40vw"
+          />
+        </div>
       </div>
 
       {/* Details */}
-      <div className="flex flex-col animate-fade-up" style={{ animationDelay: "0.1s" }}>
-        {/* Title & Author */}
+      <div className="lg:col-span-7 flex flex-col animate-fade-up" style={{ animationDelay: "0.1s" }}>
+        {/* Title */}
         <div className="mb-8">
-          <h1 className="font-serif text-display text-gema-black mb-4">
+          <h1 className="font-serif text-display text-gema-black">
             {book.title}
           </h1>
-          <p className="text-heading text-gema-gray-500">
+        </div>
+
+        {/* Author */}
+        <div className="mb-8">
+          <FieldLabel>Autor</FieldLabel>
+          <p className="text-body-lg text-gema-gray-700">
             {book.author}
           </p>
         </div>
 
         {/* Year */}
-        <p className="text-caption uppercase tracking-[0.1em] text-gema-gray-400 mb-8">
-          {book.year}
-        </p>
+        <div className="mb-8">
+          <FieldLabel>Año de publicación</FieldLabel>
+          <p className="text-body text-gema-gray-700">
+            {book.year}
+          </p>
+        </div>
 
         {/* Description */}
         <div className="mb-12">
+          <FieldLabel>Sinopsis</FieldLabel>
           <p className="text-body-lg text-gema-gray-600 leading-relaxed whitespace-pre-line">
             {book.description}
           </p>
@@ -82,9 +99,7 @@ export function BookDetail({ book }: BookDetailProps) {
 
         {/* Format Selection */}
         <div className="mb-8">
-          <h3 className="text-caption uppercase tracking-[0.1em] text-gema-gray-400 mb-4">
-            Formato
-          </h3>
+          <FieldLabel>Formato</FieldLabel>
           <div className="flex flex-wrap gap-3">
             {availableFormats.map(({ format, label, available, price }) => (
               <button
@@ -118,6 +133,7 @@ export function BookDetail({ book }: BookDetailProps) {
         {/* Price Display */}
         {selectedFormat && (
           <div className="mb-8 animate-fade-in">
+            <FieldLabel>Precio</FieldLabel>
             <span className="text-display-lg font-serif text-gema-black">
               {formatCurrency(getBookPrice(book, selectedFormat))}
             </span>

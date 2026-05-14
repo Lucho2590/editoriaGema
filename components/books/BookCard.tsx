@@ -20,6 +20,12 @@ export function BookCard({ book, index = 0 }: BookCardProps) {
 
   const lowestPrice = Math.min(...prices);
 
+  const availableFormatLabels = [
+    book.formats.pdf && "PDF",
+    book.formats.epub && "EPUB",
+    book.formats.print && "Impreso",
+  ].filter(Boolean) as string[];
+
   return (
     <article
       className="group animate-fade-up"
@@ -41,37 +47,42 @@ export function BookCard({ book, index = 0 }: BookCardProps) {
         </div>
 
         {/* Info */}
-        <div className="space-y-2">
-          <h3 className="font-serif text-heading text-gema-black group-hover:text-gema-gray-700 transition-colors duration-300">
-            {book.title}
-          </h3>
+        <div className="space-y-5">
+          <div>
+            <p className="text-caption uppercase tracking-[0.1em] text-gema-gray-400 mb-1">
+              Título
+            </p>
+            <h3 className="font-serif text-heading text-gema-black group-hover:text-gema-gray-700 transition-colors duration-300">
+              {book.title}
+            </h3>
+          </div>
 
-          <p className="text-small text-gema-gray-500">
-            {book.author}
-          </p>
+          <div>
+            <p className="text-caption uppercase tracking-[0.1em] text-gema-gray-400 mb-1">
+              Autor
+            </p>
+            <p className="text-body text-gema-gray-700">
+              {book.author}
+            </p>
+          </div>
 
-          <div className="flex items-center gap-3 pt-2">
-            <span className="text-body text-gema-black">
-              {formatCurrency(lowestPrice)}
-            </span>
+          <div className="grid grid-cols-2 gap-4 pt-2">
+            <div>
+              <p className="text-caption uppercase tracking-[0.1em] text-gema-gray-400 mb-1">
+                Desde
+              </p>
+              <span className="text-body text-gema-black">
+                {formatCurrency(lowestPrice)}
+              </span>
+            </div>
 
-            {/* Format indicators */}
-            <div className="flex gap-2">
-              {book.formats.pdf && (
-                <span className="text-caption text-gema-gray-400 uppercase tracking-wider">
-                  PDF
-                </span>
-              )}
-              {book.formats.epub && (
-                <span className="text-caption text-gema-gray-400 uppercase tracking-wider">
-                  EPUB
-                </span>
-              )}
-              {book.formats.print && (
-                <span className="text-caption text-gema-gray-400 uppercase tracking-wider">
-                  Impreso
-                </span>
-              )}
+            <div>
+              <p className="text-caption uppercase tracking-[0.1em] text-gema-gray-400 mb-1">
+                Disponible en
+              </p>
+              <span className="text-body text-gema-gray-700">
+                {availableFormatLabels.join(" · ")}
+              </span>
             </div>
           </div>
         </div>

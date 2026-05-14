@@ -1,8 +1,24 @@
 "use client";
 
+import Image from "next/image";
+
 export function Hero() {
   return (
-    <section className="min-h-[80vh] flex items-center justify-center px-gutter">
+    <section className="relative min-h-[80vh] flex items-center justify-center px-gutter overflow-hidden">
+      {/* Background image */}
+      <div className="absolute inset-0 -z-10">
+        <Image
+          src="/hero-bg.jpg"
+          alt=""
+          fill
+          priority
+          className="object-cover opacity-15"
+          sizes="100vw"
+        />
+        {/* Soft fade to background at edges for a more subtle blend */}
+        <div className="absolute inset-0 bg-gradient-to-b from-gema-white via-transparent to-gema-white" />
+      </div>
+
       <div className="max-w-content mx-auto text-center">
         <div className="animate-fade-up">
           <h1 className="font-serif text-display-xl md:text-display-xl text-gema-black mb-8 tracking-[0.05em]">
