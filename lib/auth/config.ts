@@ -34,3 +34,26 @@ export function safeNextPath(raw: string | null | undefined, fallback: string): 
   if (raw.startsWith("//") || raw.startsWith("/\\")) return fallback;
   return raw;
 }
+
+/**
+ * Cheap structural check on a session cookie: is it a JWT whose `exp` is still
+ * in the future?
+ *
+ * This is NOT verification — it does not check the signature, and anyone can
+ * craft a value that passes. Its only job is to let the proxy turn the obvious
+ * cases (garbage, expired) into a clean server-side redirect. The authoritative
+ * check is `verifySessionCookie` in lib/auth/session.ts.
+ */
+export function looksLikeLiveSessionCookie(value: string): boolean {
+  const segments = value.split(".");
+  if (segments.length !== 3) return false;
+
+  try {
+    const payload = segments[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = payload.padEnd(payload.length + ((4 - (payload.length % 4)) % 4), "=");
+    const { exp } = JSON.parse(atob(padded));
+    return typeof exp === "number" && exp * 1000 > Date.now();
+  } catch {
+    return false;
+  }
+}
