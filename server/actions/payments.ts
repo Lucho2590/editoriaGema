@@ -2,7 +2,7 @@
 
 import { searchPaymentsByExternalReference } from "@/lib/mercadopago/client";
 import { mapMercadoPagoStatus } from "@/lib/mercadopago/status";
-import { getOrder, updateOrderPayment } from "./orders";
+import { getOrderById, updateOrderPayment } from "@/lib/orders/fulfillment";
 import type { PaymentStatus } from "@/types";
 
 /**
@@ -14,7 +14,7 @@ export async function checkPaymentStatus(
   orderId: string
 ): Promise<{ success: boolean; status?: PaymentStatus; error?: string }> {
   try {
-    const order = await getOrder(orderId);
+    const order = await getOrderById(orderId);
     if (!order) return { success: false, error: "Order not found" };
 
     if (order.paymentProvider !== "mercadopago") {

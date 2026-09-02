@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyStripeWebhook } from "@/lib/payments";
-import { updateOrderPayment } from "@/server/actions/orders";
+import { updateOrderPayment } from "@/lib/orders/fulfillment";
 
 export async function POST(request: NextRequest) {
   const payload = await request.text();

@@ -11,8 +11,8 @@ import {
   setMercadoPagoActiveMode,
   clearMercadoPagoMode,
   type MercadoPagoSettings,
-  type MercadoPagoMode,
 } from "@/server/actions/settings";
+import type { MercadoPagoMode } from "@/lib/settings/mercadopago";
 import { useAuth } from "@/hooks/useAuth";
 
 type StatusMessage = { type: "success" | "error"; text: string };
