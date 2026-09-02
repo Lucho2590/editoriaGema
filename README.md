@@ -47,6 +47,12 @@ pnpm dev
 
 See `.env.example` for all required environment variables.
 
+The `FIREBASE_ADMIN_*` credentials are required for the admin panel: the server
+verifies the session cookie with the Admin SDK before serving `/admin/**` and
+before running any admin server action. Without them the guard falls open in
+development (with a warning in the terminal) and refuses to serve `/admin` in
+production.
+
 ## Project Structure
 
 ```

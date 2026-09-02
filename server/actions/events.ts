@@ -17,6 +17,7 @@ import {
 import { Timestamp } from "firebase-admin/firestore";
 import { GemaEvent, Ticket, TicketStatus, EventInput, TicketPurchaseInput } from "@/types";
 import { sendTicketEmail } from "./emails";
+import { assertAdmin } from "@/lib/auth/session";
 
 const EVENTS_COLLECTION = "events";
 const TICKETS_COLLECTION = "tickets";
@@ -92,6 +93,9 @@ async function checkTicketCodeExists(code: string): Promise<boolean> {
 // ---- EVENTS ----
 
 export async function createEvent(input: EventInput): Promise<{ success: boolean; eventId?: string; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   try {
     const now = isAdminReady ? Timestamp.now() : ClientTimestamp.now();
     const slug = input.title
@@ -201,6 +205,9 @@ export async function updateEvent(
   eventId: string,
   data: Partial<EventInput> & { active?: boolean }
 ): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   try {
     const now = isAdminReady ? Timestamp.now() : ClientTimestamp.now();
     const update: Record<string, unknown> = { updatedAt: now };
@@ -311,6 +318,13 @@ export async function simulateTicketPurchase(
   return purchaseTicket(input);
 }
 
+/**
+ * NOT guarded with assertAdmin: the public door-staff page at
+ * /validar-entrada also calls this, and it is gated only by
+ * NEXT_PUBLIC_VALIDATOR_PIN — a constant baked into the client bundle, so not
+ * an access control at all. Closing this properly needs a server-verified
+ * validator token, which is tracked separately.
+ */
 export async function validateTicket(
   code: string
 ): Promise<{ success: boolean; ticket?: Ticket; error?: string }> {
@@ -375,6 +389,9 @@ export async function validateTicket(
 }
 
 export async function getEventTickets(eventId: string): Promise<Ticket[]> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return [];
+
   try {
     if (isAdminReady && adminDb) {
       const snapshot = await adminDb

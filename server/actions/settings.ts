@@ -2,19 +2,23 @@
 
 import { adminDb, isAdminReady } from "@/lib/firebase-admin";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, deleteDoc, Timestamp as ClientTimestamp } from "firebase/firestore";
+import { doc, deleteDoc, setDoc, Timestamp as ClientTimestamp } from "firebase/firestore";
 import { Timestamp } from "firebase-admin/firestore";
-
-const SETTINGS_COLLECTION = "settings";
-const MP_DOC_ID = "mercadopago";
-const TRANSFER_DOC_ID = "transfer";
-
-export type MercadoPagoMode = "test" | "production";
-
-export interface MercadoPagoModeCredentials {
-  accessToken: string;
-  webhookSecret: string;
-}
+import { assertAdmin } from "@/lib/auth/session";
+import {
+  MP_DOC_ID,
+  SETTINGS_COLLECTION,
+  TRANSFER_DOC_ID,
+  nowTimestamp,
+  readSettingsDoc,
+  serializeTimestamp,
+  writeSettingsDoc,
+} from "@/lib/settings/store";
+import {
+  readRawSettings,
+  type MercadoPagoMode,
+  type MercadoPagoModeCredentials,
+} from "@/lib/settings/mercadopago";
 
 export interface MercadoPagoSettings {
   activeMode: MercadoPagoMode;
@@ -24,62 +28,8 @@ export interface MercadoPagoSettings {
   updatedBy?: string;
 }
 
-export interface MercadoPagoActive {
-  mode: MercadoPagoMode;
-  accessToken: string;
-  webhookSecret: string;
-}
-
-interface MercadoPagoSettingsRaw {
-  activeMode?: MercadoPagoMode;
-  test?: MercadoPagoModeCredentials;
-  production?: MercadoPagoModeCredentials;
-  updatedAt?: Timestamp | ClientTimestamp;
-  updatedBy?: string;
-}
-
-function serializeTimestamp(ts: unknown): string {
-  if (!ts) return new Date().toISOString();
-  if (typeof ts === "object" && ts !== null && "_seconds" in ts) {
-    const t = ts as { _seconds: number };
-    return new Date(t._seconds * 1000).toISOString();
-  }
-  if (typeof ts === "object" && ts !== null && "toDate" in ts) {
-    return (ts as { toDate: () => Date }).toDate().toISOString();
-  }
-  if (typeof ts === "string") return ts;
-  return new Date().toISOString();
-}
-
-async function readRawDoc<T = Record<string, unknown>>(docId: string): Promise<T | null> {
-  if (isAdminReady && adminDb) {
-    const snap = await adminDb.collection(SETTINGS_COLLECTION).doc(docId).get();
-    if (!snap.exists) return null;
-    return snap.data() as T;
-  }
-  const snap = await getDoc(doc(db, SETTINGS_COLLECTION, docId));
-  if (!snap.exists()) return null;
-  return snap.data() as T;
-}
-
-async function writeRawDoc(docId: string, data: Record<string, unknown>): Promise<void> {
-  if (isAdminReady && adminDb) {
-    await adminDb.collection(SETTINGS_COLLECTION).doc(docId).set(data, { merge: true });
-    return;
-  }
-  await setDoc(doc(db, SETTINGS_COLLECTION, docId), data, { merge: true });
-}
-
-async function readRawSettings(): Promise<MercadoPagoSettingsRaw | null> {
-  return readRawDoc<MercadoPagoSettingsRaw>(MP_DOC_ID);
-}
-
 async function writeRawSettings(data: Record<string, unknown>): Promise<void> {
-  return writeRawDoc(MP_DOC_ID, data);
-}
-
-function nowTimestamp(): Timestamp | ClientTimestamp {
-  return isAdminReady ? Timestamp.now() : ClientTimestamp.now();
+  return writeSettingsDoc(MP_DOC_ID, data);
 }
 
 function maskCredentials(creds: MercadoPagoModeCredentials | undefined): MercadoPagoModeCredentials | undefined {
@@ -115,6 +65,9 @@ function validatePrefix(mode: MercadoPagoMode, accessToken: string): string | nu
  * Returns settings with credentials masked — safe to expose to the admin UI.
  */
 export async function getMercadoPagoSettings(): Promise<MercadoPagoSettings | null> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return null;
+
   try {
     const raw = await readRawSettings();
     if (!raw) return null;
@@ -132,53 +85,15 @@ export async function getMercadoPagoSettings(): Promise<MercadoPagoSettings | nu
   }
 }
 
-/**
- * Returns the credentials of the active mode — used internally by the checkout
- * and webhook code. Not exposed via the admin UI.
- */
-export async function getActiveMercadoPago(): Promise<MercadoPagoActive | null> {
-  try {
-    const raw = await readRawSettings();
-    if (!raw) return null;
-    const mode: MercadoPagoMode = raw.activeMode || "test";
-    const creds = raw[mode];
-    if (!creds || !creds.accessToken || !creds.webhookSecret) return null;
-    return { mode, accessToken: creds.accessToken, webhookSecret: creds.webhookSecret };
-  } catch (error) {
-    console.error("Failed to get active MercadoPago credentials:", error);
-    return null;
-  }
-}
-
-/**
- * Returns both credential sets (raw, unmasked). Only call from server-side
- * webhook handler where we need to try both secrets for signature verification.
- */
-export async function getMercadoPagoSecrets(): Promise<{
-  activeMode: MercadoPagoMode;
-  test?: MercadoPagoModeCredentials;
-  production?: MercadoPagoModeCredentials;
-} | null> {
-  try {
-    const raw = await readRawSettings();
-    if (!raw) return null;
-    return {
-      activeMode: raw.activeMode || "test",
-      test: raw.test,
-      production: raw.production,
-    };
-  } catch (error) {
-    console.error("Failed to get MercadoPago secrets:", error);
-    return null;
-  }
-}
-
 export async function saveMercadoPagoCredentials(input: {
   mode: MercadoPagoMode;
   accessToken: string;
   webhookSecret: string;
   updatedBy?: string;
 }): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   const accessToken = input.accessToken.trim();
   const webhookSecret = input.webhookSecret.trim();
 
@@ -206,6 +121,9 @@ export async function setMercadoPagoActiveMode(input: {
   mode: MercadoPagoMode;
   updatedBy?: string;
 }): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   try {
     const raw = await readRawSettings();
     const block = raw?.[input.mode];
@@ -232,6 +150,9 @@ export async function clearMercadoPagoMode(input: {
   mode: MercadoPagoMode;
   updatedBy?: string;
 }): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   try {
     if (isAdminReady && adminDb) {
       const ref = adminDb.collection(SETTINGS_COLLECTION).doc(MP_DOC_ID);
@@ -262,6 +183,9 @@ export async function clearMercadoPagoMode(input: {
 }
 
 export async function disconnectMercadoPago(): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   try {
     if (isAdminReady && adminDb) {
       await adminDb.collection(SETTINGS_COLLECTION).doc(MP_DOC_ID).delete();
@@ -309,7 +233,7 @@ interface TransferSettingsRaw {
 
 export async function getTransferSettings(): Promise<TransferSettings | null> {
   try {
-    const raw = await readRawDoc<TransferSettingsRaw>(TRANSFER_DOC_ID);
+    const raw = await readSettingsDoc<TransferSettingsRaw>(TRANSFER_DOC_ID);
     if (!raw) return null;
     return {
       enabled: raw.enabled ?? false,
@@ -342,6 +266,9 @@ export async function saveTransferSettings(input: {
   instructions: string;
   updatedBy?: string;
 }): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   const bankName = input.bankName.trim();
   const accountHolder = input.accountHolder.trim();
   const cbu = input.cbu.trim();
@@ -362,7 +289,7 @@ export async function saveTransferSettings(input: {
   }
 
   try {
-    await writeRawDoc(TRANSFER_DOC_ID, {
+    await writeSettingsDoc(TRANSFER_DOC_ID, {
       enabled: input.enabled,
       bankName,
       accountHolder,
@@ -383,8 +310,11 @@ export async function saveTransferSettings(input: {
 }
 
 export async function disableTransfer(updatedBy?: string): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   try {
-    await writeRawDoc(TRANSFER_DOC_ID, {
+    await writeSettingsDoc(TRANSFER_DOC_ID, {
       enabled: false,
       updatedAt: nowTimestamp(),
       ...(updatedBy ? { updatedBy } : {}),

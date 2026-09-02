@@ -19,6 +19,7 @@ import {
 import { Timestamp } from "firebase-admin/firestore";
 import { Book, BookInput } from "@/types";
 import { slugify } from "@/lib/utils";
+import { assertAdmin } from "@/lib/auth/session";
 
 const BOOKS_COLLECTION = "books";
 
@@ -88,6 +89,9 @@ export async function getBooks(): Promise<Book[]> {
  * Get all books (including unpublished) for admin
  */
 export async function getAllBooks(): Promise<Book[]> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return [];
+
   try {
     if (!isAdminReady || !adminDb) {
       const q = query(collection(db, BOOKS_COLLECTION), orderBy("createdAt", "desc"));
@@ -159,6 +163,16 @@ export async function getBookBySlug(slug: string): Promise<Book | null> {
  * Get book by ID
  */
 export async function getBookById(id: string): Promise<Book | null> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return null;
+
+  return readBookById(id);
+}
+
+/**
+ * Unguarded read for internal callers that have already checked authorization.
+ */
+async function readBookById(id: string): Promise<Book | null> {
   try {
     if (!isAdminReady || !adminDb) {
       const docSnap = await getDoc(doc(db, BOOKS_COLLECTION, id));
@@ -179,6 +193,9 @@ export async function getBookById(id: string): Promise<Book | null> {
  * Create a new book
  */
 export async function createBook(input: BookInput): Promise<{ success: boolean; bookId?: string; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   try {
     const slug = input.slug || slugify(input.title);
     const existing = await getBookBySlug(slug);
@@ -219,6 +236,9 @@ export async function updateBook(
   id: string,
   input: Partial<BookInput>
 ): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   try {
     if (input.slug) {
       const existing = await getBookBySlug(input.slug);
@@ -227,7 +247,7 @@ export async function updateBook(
       }
     }
 
-    const previous = await getBookById(id);
+    const previous = await readBookById(id);
 
     const updateData = {
       ...input,
@@ -253,8 +273,11 @@ export async function updateBook(
  * Delete a book
  */
 export async function deleteBook(id: string): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   try {
-    const previous = await getBookById(id);
+    const previous = await readBookById(id);
 
     if (!isAdminReady || !adminDb) {
       await deleteDoc(doc(db, BOOKS_COLLECTION, id));
@@ -291,6 +314,9 @@ export async function uploadBookFile(
   filename: string,
   contentType: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   // This requires Firebase Admin for signed URLs
   if (!isAdminReady) {
     return { success: false, error: "Firebase Admin required for file uploads" };

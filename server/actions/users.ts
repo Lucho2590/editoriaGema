@@ -4,6 +4,7 @@ import { adminAuth, adminDb, isAdminReady } from "@/lib/firebase-admin";
 import { sendEmail } from "@/lib/resend";
 import { AdminInvitationEmail } from "@/components/email/AdminInvitation";
 import { FieldValue } from "firebase-admin/firestore";
+import { assertAdmin } from "@/lib/auth/session";
 
 export interface CreateAdminInput {
   email: string;
@@ -25,6 +26,9 @@ export interface CreateAdminResult {
 export async function createAdminUser(
   input: CreateAdminInput,
 ): Promise<CreateAdminResult> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   if (!isAdminReady || !adminAuth || !adminDb) {
     return {
       success: false,
@@ -137,6 +141,9 @@ export async function createAdminUser(
  * Get all admin users
  */
 export async function getAdminUsers() {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error, users: [] };
+
   if (!isAdminReady || !adminDb) {
     return {
       success: false,
@@ -174,7 +181,10 @@ export async function getAdminUsers() {
  * Remove admin privileges from a user (doesn't delete the user)
  */
 export async function removeAdminPrivilege(userId: string) {
-  if (!isAdminReady || !adminDb) {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  if (!isAdminReady || !adminDb || !adminAuth) {
     return { success: false, error: "Firebase Admin SDK no está configurado" };
   }
 
@@ -183,6 +193,10 @@ export async function removeAdminPrivilege(userId: string) {
       isAdmin: false,
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    // Kill their session cookie now instead of letting it coast for its
+    // remaining lifetime with admin access.
+    await adminAuth.revokeRefreshTokens(userId);
 
     return { success: true };
   } catch (error: any) {
@@ -198,6 +212,9 @@ export async function resendAdminInvitation(
   email: string,
   displayName?: string,
 ) {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
   if (!isAdminReady || !adminAuth) {
     return { success: false, error: "Firebase Admin SDK no está configurado" };
   }

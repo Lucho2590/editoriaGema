@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -40,6 +40,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, gemaUser, loading, isAdmin, signOut } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -59,11 +60,18 @@ export default function AdminLayout({
     });
   };
 
+  // Secondary guard: app/(admin)/layout.tsx already gates this server-side,
+  // but this covers client-side navigation once the session goes stale.
   useEffect(() => {
-    if (!loading && (!user || !isAdmin)) {
-      router.push("/");
+    if (loading) return;
+    if (!user) {
+      router.replace(`/auth/login?next=${encodeURIComponent(pathname)}`);
+      return;
     }
-  }, [user, isAdmin, loading, router]);
+    if (!isAdmin) {
+      router.replace("/");
+    }
+  }, [user, isAdmin, loading, router, pathname]);
 
   if (loading) {
     return (
@@ -79,7 +87,9 @@ export default function AdminLayout({
 
   const handleSignOut = async () => {
     await signOut();
-    router.push("/");
+    router.replace("/auth/login");
+    // Drop the RSC router cache so the server layout re-runs without a cookie.
+    router.refresh();
   };
 
   return (

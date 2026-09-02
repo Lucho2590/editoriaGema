@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { Timestamp } from "firebase-admin/firestore";
 import { adminDb, isAdminReady } from "@/lib/firebase-admin";
 import { getPayment } from "@/lib/mercadopago/client";
-import { getMercadoPagoSecrets } from "@/server/actions/settings";
-import { updateOrderPayment } from "@/server/actions/orders";
+import { getMercadoPagoSecrets } from "@/lib/settings/mercadopago";
+import { updateOrderPayment } from "@/lib/orders/fulfillment";
 import { mapMercadoPagoStatus } from "@/lib/mercadopago/status";
 import { verifyWebhookSignature, parseSignatureHeader } from "@/lib/mercadopago/signature";
 

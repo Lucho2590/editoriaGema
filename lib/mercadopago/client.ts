@@ -1,5 +1,5 @@
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
-import { getActiveMercadoPago, type MercadoPagoActive } from "@/server/actions/settings";
+import { getActiveMercadoPago, type MercadoPagoActive } from "@/lib/settings/mercadopago";
 
 export interface MercadoPagoClientContext {
   config: MercadoPagoConfig;
