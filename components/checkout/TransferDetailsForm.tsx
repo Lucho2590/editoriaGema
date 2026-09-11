@@ -51,7 +51,13 @@ export function TransferDetailsForm({ orderId }: Props) {
     e.preventDefault();
     setError(null);
 
-    if (!buyerName.trim() || !buyerDni.trim() || !buyerPhone.trim() || !buyerBank.trim() || !buyerAccount.trim()) {
+    if (
+      !buyerName.trim() ||
+      !buyerDni.trim() ||
+      !buyerPhone.trim() ||
+      !buyerBank.trim() ||
+      !buyerAccount.trim()
+    ) {
       setError("Completá todos los campos");
       return;
     }
@@ -85,9 +91,13 @@ export function TransferDetailsForm({ orderId }: Props) {
         throw new Error(result.error || "No se pudieron enviar los datos");
       }
 
-      router.push(`/checkout/pending?external_reference=${orderId}&method=transfer`);
+      router.push(
+        `/checkout/pending?external_reference=${orderId}&method=transfer`,
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al enviar los datos");
+      setError(
+        err instanceof Error ? err.message : "Error al enviar los datos",
+      );
       setLoading(false);
     }
   };
@@ -133,12 +143,12 @@ export function TransferDetailsForm({ orderId }: Props) {
       </div>
 
       <div>
-        <label className="block text-caption uppercase tracking-[0.1em] text-gema-gray-500 mb-2">
+        <label className="block eyebrow eyebrow-muted mb-2">
           Comprobante (opcional)
         </label>
-        <label className="flex items-center gap-3 p-4 border border-dashed border-gema-gray-300 cursor-pointer hover:border-gema-black transition-colors">
-          <UploadCloud size={20} className="text-gema-gray-500 shrink-0" />
-          <span className="text-small text-gema-gray-600 truncate">
+        <label className="flex items-center gap-3 p-4 border border-dashed border-rule cursor-pointer hover:border-ink transition-colors">
+          <UploadCloud size={20} className="text-ink-soft shrink-0" />
+          <span className="text-meta text-ink-soft truncate">
             {file ? file.name : "Subí una imagen o PDF (máx. 6 MB)"}
           </span>
           <input
@@ -150,7 +160,7 @@ export function TransferDetailsForm({ orderId }: Props) {
         </label>
       </div>
 
-      {error && <p className="text-small text-red-500">{error}</p>}
+      {error && <p className="text-meta text-accent">{error}</p>}
 
       <Button type="submit" loading={loading} className="w-full md:w-auto">
         Enviar datos

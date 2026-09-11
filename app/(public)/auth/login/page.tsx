@@ -19,7 +19,7 @@ export default function LoginPage() {
 function LoginFallback() {
   return (
     <div className="page-transition min-h-[70vh] flex items-center justify-center">
-      <p className="text-body text-gema-gray-500">Cargando...</p>
+      <p className="text-lede text-ink-soft">Cargando...</p>
     </div>
   );
 }

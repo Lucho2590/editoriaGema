@@ -55,7 +55,9 @@ export function CheckoutForm({
   const shippingCost = hasPrintItems ? 1500 : 0; // Fixed shipping for Argentina
   const transferDiscount =
     paymentProvider === "transfer"
-      ? Math.round(((subtotal * (transferDiscountPercentage || 0)) / 100) * 100) / 100
+      ? Math.round(
+          ((subtotal * (transferDiscountPercentage || 0)) / 100) * 100,
+        ) / 100
       : 0;
   const total = subtotal - transferDiscount + shippingCost;
 
@@ -117,7 +119,6 @@ export function CheckoutForm({
     }
   };
 
-
   const handlePayment = async () => {
     setLoading(true);
     setError(null);
@@ -161,7 +162,7 @@ export function CheckoutForm({
           successUrl: `${origin}/checkout/success`,
           failureUrl: `${origin}/checkout/failure`,
           pendingUrl: `${origin}/checkout/pending`,
-        }
+        },
       );
 
       if (!result.success || !result.checkoutUrl) {
@@ -180,10 +181,10 @@ export function CheckoutForm({
   if (items.length === 0 && step === "cart") {
     return (
       <div className="text-center py-section">
-        <h2 className="font-serif text-heading-xl text-gema-black mb-4">
+        <h2 className="font-display text-h2 text-ink mb-4">
           Tu carrito está vacío
         </h2>
-        <p className="text-body-lg text-gema-gray-500 mb-8">
+        <p className="text-lede text-ink-soft mb-8">
           Explora nuestro catálogo y encuentra tu próxima lectura.
         </p>
         <Button onClick={() => router.push("/catalogo")}>Ver catálogo</Button>
@@ -198,18 +199,16 @@ export function CheckoutForm({
         <>
           {step === "cart" && (
             <div>
-              <h2 className="font-serif text-heading-xl text-gema-black mb-8">
-                Carrito
-              </h2>
+              <h2 className="font-display text-h2 text-ink mb-8">Carrito</h2>
 
               <div className="space-y-6">
                 {items.map((item) => (
                   <div
                     key={`${item.bookId}-${item.format}`}
-                    className="flex gap-6 pb-6 border-b border-gema-gray-100"
+                    className="flex gap-6 pb-6 border-b border-rule"
                   >
                     {/* Cover */}
-                    <div className="relative w-20 h-28 bg-gema-gray-50 flex-shrink-0">
+                    <div className="relative w-20 h-28 bg-paper-warm flex-shrink-0">
                       <Image
                         src={item.book.coverImage}
                         alt={item.book.title}
@@ -220,20 +219,20 @@ export function CheckoutForm({
 
                     {/* Info */}
                     <div className="flex-1">
-                      <h3 className="font-serif text-heading text-gema-black">
+                      <h3 className="font-display text-h4 text-ink">
                         {item.book.title}
                       </h3>
-                      <p className="text-small text-gema-gray-500 mb-2">
+                      <p className="text-meta text-ink-soft mb-2">
                         {item.book.author}
                       </p>
-                      <p className="text-caption uppercase tracking-wider text-gema-gray-400">
+                      <p className="text-meta uppercase tracking-wider text-ink-soft">
                         {item.format}
                       </p>
                     </div>
 
                     {/* Quantity & Price */}
                     <div className="flex flex-col items-end justify-between">
-                      <p className="text-body text-gema-black">
+                      <p className="text-lede text-ink">
                         {formatCurrency(
                           getBookPrice(item.book, item.format) * item.quantity,
                         )}
@@ -248,11 +247,11 @@ export function CheckoutForm({
                               item.quantity - 1,
                             )
                           }
-                          className="p-1 text-gema-gray-400 hover:text-gema-black transition-colors"
+                          className="p-1 text-ink-soft hover:text-ink transition-colors"
                         >
                           <Minus size={16} />
                         </button>
-                        <span className="text-small w-6 text-center">
+                        <span className="text-meta w-6 text-center">
                           {item.quantity}
                         </span>
                         <button
@@ -263,13 +262,13 @@ export function CheckoutForm({
                               item.quantity + 1,
                             )
                           }
-                          className="p-1 text-gema-gray-400 hover:text-gema-black transition-colors"
+                          className="p-1 text-ink-soft hover:text-ink transition-colors"
                         >
                           <Plus size={16} />
                         </button>
                         <button
                           onClick={() => removeItem(item.bookId, item.format)}
-                          className="p-1 ml-2 text-gema-gray-400 hover:text-red-500 transition-colors"
+                          className="p-1 ml-2 text-ink-soft hover:text-accent transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -293,7 +292,7 @@ export function CheckoutForm({
 
           {step === "info" && (
             <div>
-              <h2 className="font-serif text-heading-xl text-gema-black mb-8">
+              <h2 className="font-display text-h2 text-ink mb-8">
                 Información
               </h2>
 
@@ -309,7 +308,7 @@ export function CheckoutForm({
 
                 {hasPrintItems && (
                   <>
-                    <h3 className="text-heading text-gema-black pt-4">
+                    <h3 className="text-h4 text-ink pt-4">
                       Dirección de envío
                     </h3>
 
@@ -389,7 +388,7 @@ export function CheckoutForm({
                   </>
                 )}
 
-                {error && <p className="text-small text-red-500">{error}</p>}
+                {error && <p className="text-meta text-accent">{error}</p>}
 
                 <div className="flex gap-4 pt-4">
                   <Button variant="secondary" onClick={() => setStep("cart")}>
@@ -405,18 +404,14 @@ export function CheckoutForm({
 
           {step === "payment" && (
             <div>
-              <h2 className="font-serif text-heading-xl text-gema-black mb-8">
-                Pago
-              </h2>
+              <h2 className="font-display text-h2 text-ink mb-8">Pago</h2>
 
               <div className="space-y-6">
                 <div>
-                  <h3 className="text-caption uppercase tracking-[0.1em] text-gema-gray-400 mb-4">
-                    Método de pago
-                  </h3>
+                  <h3 className="eyebrow eyebrow-muted mb-4">Método de pago</h3>
 
                   <div className="space-y-3">
-                    <label className="flex items-center gap-4 p-4 border border-gema-gray-200 cursor-pointer hover:border-gema-black transition-colors">
+                    <label className="flex items-center gap-4 p-4 border border-rule cursor-pointer hover:border-ink transition-colors">
                       <input
                         type="radio"
                         name="payment"
@@ -425,14 +420,14 @@ export function CheckoutForm({
                         onChange={() => setPaymentProvider("mercadopago")}
                         className="w-4 h-4"
                       />
-                      <span className="text-body">MercadoPago</span>
-                      <span className="text-small text-gema-gray-500 ml-auto">
+                      <span className="text-lede">MercadoPago</span>
+                      <span className="text-meta text-ink-soft ml-auto">
                         Tarjetas o dinero en cuenta
                       </span>
                     </label>
 
                     {transferEnabled && (
-                      <label className="flex items-center gap-4 p-4 border border-gema-gray-200 cursor-pointer hover:border-gema-black transition-colors">
+                      <label className="flex items-center gap-4 p-4 border border-rule cursor-pointer hover:border-ink transition-colors">
                         <input
                           type="radio"
                           name="payment"
@@ -441,8 +436,10 @@ export function CheckoutForm({
                           onChange={() => setPaymentProvider("transfer")}
                           className="w-4 h-4"
                         />
-                        <span className="text-body">Transferencia bancaria</span>
-                        <span className="text-small text-gema-gray-500 ml-auto">
+                        <span className="text-lede">
+                          Transferencia bancaria
+                        </span>
+                        <span className="text-meta text-ink-soft ml-auto">
                           {transferDiscountPercentage > 0
                             ? `${transferDiscountPercentage}% off · acreditación manual`
                             : "Acreditación manual"}
@@ -452,7 +449,7 @@ export function CheckoutForm({
                   </div>
                 </div>
 
-                {error && <p className="text-small text-red-500">{error}</p>}
+                {error && <p className="text-meta text-accent">{error}</p>}
 
                 <div className="flex flex-wrap gap-4 pt-4">
                   <Button variant="secondary" onClick={() => setStep("info")}>
@@ -479,22 +476,20 @@ export function CheckoutForm({
 
       {/* Order Summary */}
       <div className="lg:col-span-1">
-        <div className="bg-gema-gray-50 p-8 sticky top-32">
-          <h3 className="text-caption uppercase tracking-[0.1em] text-gema-gray-400 mb-6">
-            Resumen
-          </h3>
+        <div className="bg-paper-warm p-8 sticky top-32">
+          <h3 className="eyebrow eyebrow-muted mb-6">Resumen</h3>
 
           <div className="space-y-4 mb-6">
             {items.map((item) => (
               <div
                 key={`${item.bookId}-${item.format}`}
-                className="flex justify-between text-small"
+                className="flex justify-between text-meta"
               >
-                <span className="text-gema-gray-600">
+                <span className="text-ink-soft">
                   {item.book.title} ({item.format.toUpperCase()}) ×{" "}
                   {item.quantity}
                 </span>
-                <span className="text-gema-black">
+                <span className="text-ink">
                   {formatCurrency(
                     getBookPrice(item.book, item.format) * item.quantity,
                   )}
@@ -503,17 +498,15 @@ export function CheckoutForm({
             ))}
           </div>
 
-          <div className="border-t border-gema-gray-200 pt-4 space-y-3">
-            <div className="flex justify-between text-small">
-              <span className="text-gema-gray-600">Subtotal</span>
-              <span className="text-gema-black">
-                {formatCurrency(subtotal)}
-              </span>
+          <div className="border-t border-rule pt-4 space-y-3">
+            <div className="flex justify-between text-meta">
+              <span className="text-ink-soft">Subtotal</span>
+              <span className="text-ink">{formatCurrency(subtotal)}</span>
             </div>
 
             {transferDiscount > 0 && (
-              <div className="flex justify-between text-small">
-                <span className="text-gema-gray-600">
+              <div className="flex justify-between text-meta">
+                <span className="text-ink-soft">
                   Descuento por transferencia ({transferDiscountPercentage}%)
                 </span>
                 <span className="text-green-700">
@@ -523,24 +516,22 @@ export function CheckoutForm({
             )}
 
             {hasPrintItems && (
-              <div className="flex justify-between text-small">
-                <span className="text-gema-gray-600">Envío</span>
-                <span className="text-gema-black">
-                  {formatCurrency(shippingCost)}
-                </span>
+              <div className="flex justify-between text-meta">
+                <span className="text-ink-soft">Envío</span>
+                <span className="text-ink">{formatCurrency(shippingCost)}</span>
               </div>
             )}
 
-            <div className="flex justify-between text-body pt-2 border-t border-gema-gray-200">
-              <span className="text-gema-black font-medium">Total</span>
-              <span className="text-gema-black font-medium">
+            <div className="flex justify-between text-lede pt-2 border-t border-rule">
+              <span className="text-ink font-medium">Total</span>
+              <span className="text-ink font-medium">
                 {formatCurrency(total)}
               </span>
             </div>
           </div>
 
           {hasDigitalItems && (
-            <p className="mt-6 text-caption text-gema-gray-500">
+            <p className="mt-6 text-meta text-ink-soft">
               Los libros digitales se enviarán a tu email inmediatamente después
               del pago.
             </p>

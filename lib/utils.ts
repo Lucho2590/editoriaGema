@@ -21,6 +21,16 @@ const customTwMerge = extendTailwindMerge({
             "body",
             "small",
             "caption",
+            // Escala del sitio público. Sin esto, cn("text-h2","text-ink")
+            // clasifica text-h2 como color y se come el tamaño.
+            "hero",
+            "h2",
+            "h3",
+            "h4",
+            "lede",
+            "prose",
+            "meta",
+            "eyebrow",
           ],
         },
       ],

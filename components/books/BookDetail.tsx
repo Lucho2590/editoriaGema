@@ -13,12 +13,14 @@ interface BookDetailProps {
   book: Book;
 }
 
-const FieldLabel = ({ children }: { children: React.ReactNode }) => (
-  <p className="text-caption uppercase tracking-[0.1em] text-gema-gray-400 mb-2">
-    {children}
-  </p>
-);
-
+/**
+ * Orden: tapa → título → autor → metadatos mínimos → SINOPSIS → formato →
+ * precio → comprar.
+ *
+ * La sinopsis va antes que el precio a propósito: es la jerarquía literaria,
+ * no la comercial. Almadía hace lo contrario (género BISAC, ISBN, EAN, páginas
+ * y fecha antes del texto) y es su peor decisión de ficha.
+ */
 export function BookDetail({ book }: BookDetailProps) {
   const [selectedFormat, setSelectedFormat] = useState<BookFormat | null>(null);
   const [added, setAdded] = useState(false);
@@ -29,77 +31,79 @@ export function BookDetail({ book }: BookDetailProps) {
     setMounted(true);
   }, []);
 
-  const availableFormats: { format: BookFormat; label: string; available: boolean; price: number }[] = [
-    { format: "pdf", label: "PDF", available: book.formats.pdf, price: book.pricePdf },
-    { format: "epub", label: "EPUB", available: book.formats.epub, price: book.priceEpub },
-    { format: "print", label: "Impreso", available: book.formats.print && book.stockPrint > 0, price: book.pricePrint },
+  const availableFormats: {
+    format: BookFormat;
+    label: string;
+    available: boolean;
+    price: number;
+  }[] = [
+    {
+      format: "pdf",
+      label: "PDF",
+      available: book.formats.pdf,
+      price: book.pricePdf,
+    },
+    {
+      format: "epub",
+      label: "EPUB",
+      available: book.formats.epub,
+      price: book.priceEpub,
+    },
+    {
+      format: "print",
+      label: "Impreso",
+      available: book.formats.print && book.stockPrint > 0,
+      price: book.pricePrint,
+    },
   ];
 
   const handleAddToCart = () => {
     if (!selectedFormat) return;
-
-    console.log("Adding to cart:", book.title, selectedFormat);
     addItem(book, selectedFormat);
-
-    // Track analytics (async, non-blocking)
     trackAddToCart(book.id, selectedFormat, getBookPrice(book, selectedFormat));
-
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
-      {/* Cover */}
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
+      {/* Tapa — desnuda, sin marco */}
       <div className="lg:col-span-5">
-        <div className="relative w-full max-h-[600px] aspect-[3/4] bg-gema-gray-50 animate-slide-in mx-auto lg:mx-0 lg:max-w-md">
+        <div className="relative aspect-[3/4] w-full max-w-sm mx-auto lg:mx-0 lg:max-w-none animate-slide-in">
           <Image
             src={book.coverImage}
-            alt={book.title}
+            alt={`Tapa de ${book.title}`}
             fill
             className="object-cover"
             priority
-            sizes="(max-width: 1024px) 100vw, 40vw"
+            sizes="(max-width: 1024px) 80vw, 40vw"
           />
         </div>
       </div>
 
-      {/* Details */}
-      <div className="lg:col-span-7 flex flex-col animate-fade-up" style={{ animationDelay: "0.1s" }}>
-        {/* Title */}
-        <div className="mb-8">
-          <h1 className="font-serif text-display text-gema-black">
-            {book.title}
-          </h1>
-        </div>
+      <div
+        className="lg:col-span-7 animate-fade-up"
+        style={{ animationDelay: "0.1s" }}
+      >
+        <h1 className="font-display text-hero text-ink text-balance">
+          {book.title}
+        </h1>
 
-        {/* Author */}
-        <div className="mb-8">
-          <FieldLabel>Autor</FieldLabel>
-          <p className="text-body-lg text-gema-gray-700">
-            {book.author}
-          </p>
-        </div>
+        <p className="font-display italic text-h3 text-ink-soft mt-3">
+          {book.author}
+        </p>
 
-        {/* Year */}
-        <div className="mb-8">
-          <FieldLabel>Año de publicación</FieldLabel>
-          <p className="text-body text-gema-gray-700">
-            {book.year}
-          </p>
-        </div>
+        {/* Metadatos mínimos: es lo que hay sin tocar el modelo de datos.
+            Faltan ISBN, páginas, medidas, colección, traductor y prologuista. */}
+        <p className="eyebrow eyebrow-muted mt-6">{book.year}</p>
 
-        {/* Description */}
-        <div className="mb-12">
-          <FieldLabel>Sinopsis</FieldLabel>
-          <p className="text-body-lg text-gema-gray-600 leading-relaxed whitespace-pre-line">
-            {book.description}
-          </p>
-        </div>
+        <p className="text-prose text-ink-soft mt-8 whitespace-pre-line">
+          {book.description}
+        </p>
 
-        {/* Format Selection */}
-        <div className="mb-8">
-          <FieldLabel>Formato</FieldLabel>
+        {/* Compra — después del texto */}
+        <div className="mt-12 pt-8 border-t border-rule">
+          <p className="eyebrow eyebrow-muted mb-4">Formato</p>
           <div className="flex flex-wrap gap-3">
             {availableFormats.map(({ format, label, available, price }) => (
               <button
@@ -107,66 +111,62 @@ export function BookDetail({ book }: BookDetailProps) {
                 key={format}
                 onClick={() => available && setSelectedFormat(format)}
                 disabled={!available}
+                aria-pressed={selectedFormat === format}
                 className={cn(
-                  "px-6 py-3 border transition-all duration-300",
+                  "px-5 py-3 border text-meta transition-colors duration-300",
                   selectedFormat === format
-                    ? "border-gema-black bg-gema-black text-gema-white"
+                    ? "border-ink bg-ink text-paper"
                     : available
-                    ? "border-gema-gray-200 text-gema-black hover:border-gema-black"
-                    : "border-gema-gray-100 text-gema-gray-300 cursor-not-allowed"
+                      ? "border-rule text-ink hover:border-ink"
+                      : "border-rule text-ink-soft/50 cursor-not-allowed",
                 )}
               >
-                <span className="text-small">{label}</span>
-                {available && (
-                  <span className="ml-3 text-caption">
+                {label}
+                {available ? (
+                  <span className="ml-3 text-ink-soft/80">
                     {formatCurrency(price)}
                   </span>
-                )}
-                {!available && (
-                  <span className="ml-3 text-caption">Agotado</span>
+                ) : (
+                  <span className="ml-3">Agotado</span>
                 )}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* Price Display */}
-        {selectedFormat && (
-          <div className="mb-8 animate-fade-in">
-            <FieldLabel>Precio</FieldLabel>
-            <span className="text-display-lg font-serif text-gema-black">
+          {selectedFormat && (
+            <p className="animate-fade-in mt-8 font-display text-h2 text-ink">
               {formatCurrency(getBookPrice(book, selectedFormat))}
-            </span>
-          </div>
-        )}
-
-        {/* Add to Cart */}
-        <Button
-          type="button"
-          onClick={handleAddToCart}
-          disabled={!selectedFormat || !mounted}
-          size="lg"
-          className="w-full md:w-auto"
-        >
-          {added ? (
-            <>
-              <Check className="w-4 h-4 mr-2" />
-              Agregado al carrito
-            </>
-          ) : (
-            <>
-              <ShoppingBag className="w-4 h-4 mr-2" />
-              Agregar al carrito
-            </>
+            </p>
           )}
-        </Button>
 
-        {/* Stock Notice */}
-        {selectedFormat === "print" && book.stockPrint <= 5 && book.stockPrint > 0 && (
-          <p className="mt-4 text-small text-gema-gray-500">
-            Solo quedan {book.stockPrint} ejemplares
-          </p>
-        )}
+          <Button
+            type="button"
+            onClick={handleAddToCart}
+            disabled={!selectedFormat || !mounted}
+            size="lg"
+            className="mt-6 w-full sm:w-auto"
+          >
+            {added ? (
+              <>
+                <Check className="w-4 h-4 mr-2" />
+                Agregado al carrito
+              </>
+            ) : (
+              <>
+                <ShoppingBag className="w-4 h-4 mr-2" />
+                Agregar al carrito
+              </>
+            )}
+          </Button>
+
+          {selectedFormat === "print" &&
+            book.stockPrint <= 5 &&
+            book.stockPrint > 0 && (
+              <p className="mt-4 text-meta text-accent">
+                Solo quedan {book.stockPrint} ejemplares
+              </p>
+            )}
+        </div>
       </div>
     </div>
   );
