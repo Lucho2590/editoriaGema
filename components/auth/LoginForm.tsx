@@ -11,8 +11,15 @@ import { Input } from "@/components/ui/Input";
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { signIn, signInWithGoogle, loading, error, user, gemaUser, sessionReady } =
-    useAuth();
+  const {
+    signIn,
+    signInWithGoogle,
+    loading,
+    error,
+    user,
+    gemaUser,
+    sessionReady,
+  } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,7 +29,8 @@ export function LoginForm() {
 
   const resolveTarget = (isAdmin: boolean) => {
     // Sending a non-admin to a /admin next param would just bounce them back.
-    if (nextParam && (isAdmin || !nextParam.startsWith("/admin"))) return nextParam;
+    if (nextParam && (isAdmin || !nextParam.startsWith("/admin")))
+      return nextParam;
     return isAdmin ? "/admin" : "/mi-biblioteca";
   };
 
@@ -63,10 +71,8 @@ export function LoginForm() {
     <div className="page-transition min-h-[70vh] flex items-center justify-center">
       <div className="w-full max-w-sm px-gutter">
         <div className="text-center mb-12">
-          <h1 className="font-serif text-heading-xl text-gema-black mb-2">
-            Iniciar sesión
-          </h1>
-          <p className="text-body text-gema-gray-500">
+          <h1 className="font-display text-h2 text-ink mb-2">Iniciar sesión</h1>
+          <p className="text-lede text-ink-soft">
             Accede a tu biblioteca digital
           </p>
         </div>
@@ -91,7 +97,7 @@ export function LoginForm() {
           />
 
           {(localError || error) && (
-            <p className="text-small text-red-500">{localError || error}</p>
+            <p className="text-meta text-accent">{localError || error}</p>
           )}
 
           <Button type="submit" loading={loading} className="w-full">
@@ -101,10 +107,10 @@ export function LoginForm() {
 
         <div className="relative my-8">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gema-gray-200" />
+            <div className="w-full border-t border-rule" />
           </div>
           <div className="relative flex justify-center">
-            <span className="bg-gema-white px-4 text-caption text-gema-gray-400">
+            <span className="bg-paper px-4 text-meta text-ink-soft">
               o continúa con
             </span>
           </div>
@@ -138,12 +144,9 @@ export function LoginForm() {
           Google
         </Button>
 
-        <p className="text-center mt-8 text-small text-gema-gray-500">
+        <p className="text-center mt-8 text-meta text-ink-soft">
           ¿No tienes cuenta?{" "}
-          <Link
-            href="/auth/registro"
-            className="text-gema-black hover:underline"
-          >
+          <Link href="/auth/registro" className="text-ink hover:underline">
             Crear cuenta
           </Link>
         </p>

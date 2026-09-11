@@ -54,7 +54,7 @@ export default function MiBibliotecaPage() {
       <div className="page-transition">
         <section className="section min-h-[60vh] flex items-center justify-center">
           <div className="text-center">
-            <p className="text-body text-gema-gray-500">Cargando...</p>
+            <p className="text-lede text-ink-soft">Cargando...</p>
           </div>
         </section>
       </div>
@@ -65,16 +65,16 @@ export default function MiBibliotecaPage() {
     return (
       <div className="page-transition">
         <section className="section min-h-[60vh] flex items-center">
-          <div className="max-w-prose mx-auto text-center">
-            <h1 className="font-serif text-heading-xl text-gema-black mb-4">
+          <div className="max-w-readable mx-auto text-center">
+            <h1 className="font-display text-h2 text-ink mb-4">
               Mi Biblioteca
             </h1>
-            <p className="text-body-lg text-gema-gray-600 mb-8">
+            <p className="text-lede text-ink-soft mb-8">
               Inicia sesión para acceder a tus libros digitales.
             </p>
             <Link
               href="/auth/login"
-              className="inline-block px-8 py-4 bg-gema-black text-gema-white text-small tracking-wide hover:bg-gema-gray-800 transition-colors duration-300"
+              className="inline-block px-8 py-4 bg-ink text-paper text-meta tracking-wide hover:bg-paper-warm transition-colors duration-300"
             >
               Iniciar sesión
             </Link>
@@ -88,16 +88,17 @@ export default function MiBibliotecaPage() {
     return (
       <div className="page-transition">
         <section className="section min-h-[60vh] flex items-center">
-          <div className="max-w-prose mx-auto text-center">
-            <h1 className="font-serif text-heading-xl text-gema-black mb-4">
+          <div className="max-w-readable mx-auto text-center">
+            <h1 className="font-display text-h2 text-ink mb-4">
               Mi Biblioteca
             </h1>
-            <p className="text-body-lg text-gema-gray-600 mb-8">
-              Aún no tienes libros digitales. Explora nuestro catálogo para encontrar tu próxima lectura.
+            <p className="text-lede text-ink-soft mb-8">
+              Aún no tienes libros digitales. Explora nuestro catálogo para
+              encontrar tu próxima lectura.
             </p>
             <Link
               href="/catalogo"
-              className="inline-block px-8 py-4 bg-gema-black text-gema-white text-small tracking-wide hover:bg-gema-gray-800 transition-colors duration-300"
+              className="inline-block px-8 py-4 bg-ink text-paper text-meta tracking-wide hover:bg-paper-warm transition-colors duration-300"
             >
               Ver catálogo
             </Link>
@@ -110,12 +111,12 @@ export default function MiBibliotecaPage() {
   return (
     <div className="page-transition">
       {/* Header */}
-      <section className="section-sm border-b border-gema-gray-100">
+      <section className="section-sm border-b border-rule">
         <div className="max-w-content mx-auto">
-          <h1 className="font-serif text-display text-gema-black mb-4">
+          <h1 className="font-display text-hero text-ink mb-4">
             Mi Biblioteca
           </h1>
-          <p className="text-body-lg text-gema-gray-500">
+          <p className="text-lede text-ink-soft">
             Tus libros digitales comprados en GEMA.
           </p>
         </div>
@@ -131,9 +132,9 @@ export default function MiBibliotecaPage() {
                 className="group animate-fade-up"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
-                <div className="bg-gema-gray-50 p-6">
+                <div className="bg-paper-warm p-6">
                   {/* Cover */}
-                  <div className="relative aspect-[3/4] mb-6 bg-gema-white">
+                  <div className="relative aspect-[3/4] mb-6 bg-paper">
                     {purchase.bookCover && (
                       <Image
                         src={purchase.bookCover}
@@ -146,18 +147,18 @@ export default function MiBibliotecaPage() {
 
                   {/* Info */}
                   <div className="space-y-2 mb-6">
-                    <h3 className="font-serif text-heading text-gema-black">
+                    <h3 className="font-display text-h4 text-ink">
                       {purchase.bookTitle}
                     </h3>
-                    <p className="text-small text-gema-gray-500">
+                    <p className="text-meta text-ink-soft">
                       {purchase.bookAuthor}
                     </p>
                     <div className="flex items-center gap-3">
-                      <span className="text-caption uppercase tracking-wider text-gema-gray-400">
+                      <span className="text-meta uppercase tracking-wider text-ink-soft">
                         {purchase.format}
                       </span>
-                      <span className="text-caption text-gema-gray-300">·</span>
-                      <span className="text-caption text-gema-gray-400">
+                      <span className="text-meta text-ink-soft/60">·</span>
+                      <span className="text-meta text-ink-soft">
                         {formatDate(purchase.purchasedAt)}
                       </span>
                     </div>

@@ -1,46 +1,49 @@
-"use client";
+import Link from "next/link";
 
-import Image from "next/image";
-
+/**
+ * Hero de posicionamiento, no de marca.
+ *
+ * El hero anterior gastaba 80vh en repetir el wordmark "GEMA", que ya está en
+ * el navbar dos centímetros más arriba. Lo que distingue a una editorial de
+ * una tienda es su criterio, y el criterio se dice con una frase.
+ *
+ * NOTA: la frase es la primera oración del manifiesto, textual. Es de ustedes
+ * y funciona, pero si quieren una declaración escrita específicamente para
+ * este lugar, se cambia acá y en ningún otro lado.
+ */
 export function Hero() {
   return (
-    <section className="relative min-h-[80vh] flex items-center justify-center px-gutter overflow-hidden">
-      {/* Background image */}
-      <div className="absolute inset-0 -z-10">
-        <Image
-          src="/hero-bg.jpg"
-          alt=""
-          fill
-          priority
-          className="object-cover opacity-15"
-          sizes="100vw"
-        />
-        {/* Soft fade to background at edges for a more subtle blend */}
-        <div className="absolute inset-0 bg-gradient-to-b from-gema-white via-transparent to-gema-white" />
-      </div>
+    <section className="section-sm pt-16 md:pt-24 pb-16 md:pb-20">
+      <div className="max-w-content mx-auto">
+        <p className="eyebrow animate-fade-in">Editorial independiente</p>
 
-      <div className="max-w-content mx-auto text-center">
-        <div className="animate-fade-up">
-          <h1 className="font-serif text-display-xl md:text-display-xl text-gema-black mb-8 tracking-[0.05em]">
-            GEMA
-          </h1>
-        </div>
+        <h1 className="animate-fade-up mt-6 max-w-[18ch] font-display text-hero text-ink text-balance">
+          Espacios de resonancia para las ideas que transforman nuestra
+          comprensión del mundo.
+        </h1>
 
-        <div className="animate-fade-in" style={{ animationDelay: "0.3s" }}>
-          <p className="text-small md:text-body tracking-[0.2em] uppercase text-gema-gray-500 max-w-xl mx-auto leading-relaxed">
-            Generadora de Escrituras y Manifiestos Artísticos
-          </p>
-        </div>
-
-        <div className="animate-fade-up mt-16" style={{ animationDelay: "0.6s" }}>
-          <p className="text-body-lg text-gema-gray-600 max-w-lg mx-auto">
-            Editorial independiente de pensamiento contemporáneo, humanidades y ciencias sociales.
-          </p>
-        </div>
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 animate-fade-in" style={{ animationDelay: "1s" }}>
-          <div className="w-px h-12 bg-gema-gray-300 animate-bounce" />
+        <div
+          className="animate-fade-up mt-10 flex flex-wrap items-center gap-x-8 gap-y-4"
+          style={{ animationDelay: "0.15s" }}
+        >
+          <Link
+            href="/catalogo"
+            className="group inline-flex items-center gap-2 border-b border-ink pb-1 text-meta text-ink transition-colors duration-300 hover:border-accent hover:text-accent"
+          >
+            Ver el catálogo
+            <span
+              aria-hidden
+              className="transition-transform duration-300 group-hover:translate-x-1"
+            >
+              →
+            </span>
+          </Link>
+          <Link
+            href="/manifiesto"
+            className="text-meta text-ink-soft transition-colors duration-300 hover:text-ink"
+          >
+            Sobre la editorial
+          </Link>
         </div>
       </div>
     </section>

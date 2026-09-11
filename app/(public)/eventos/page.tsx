@@ -5,7 +5,11 @@ import { Calendar, MapPin, Users, Loader2, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { GemaEvent } from "@/types";
-import { getEvents, simulateTicketPurchase, purchaseTicket } from "@/server/actions/events";
+import {
+  getEvents,
+  simulateTicketPurchase,
+  purchaseTicket,
+} from "@/server/actions/events";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
 
@@ -17,7 +21,11 @@ export default function EventosPage() {
   const [buyerEmail, setBuyerEmail] = useState("");
   const [buyerName, setBuyerName] = useState("");
   const [purchaseLoading, setPurchaseLoading] = useState(false);
-  const [result, setResult] = useState<{ success: boolean; code?: string; error?: string } | null>(null);
+  const [result, setResult] = useState<{
+    success: boolean;
+    code?: string;
+    error?: string;
+  } | null>(null);
 
   const isDev = process.env.NEXT_PUBLIC_APP_URL?.includes("localhost") ?? false;
 
@@ -63,12 +71,18 @@ export default function EventosPage() {
 
   function formatEventDate(event: GemaEvent): string {
     try {
-      const dateVal = event.date as unknown as { seconds: number } | { toDate: () => Date } | string;
-      const d = typeof dateVal === "object" && dateVal !== null && "seconds" in dateVal
-        ? new Date(dateVal.seconds * 1000)
-        : typeof dateVal === "object" && dateVal !== null && "toDate" in dateVal
-        ? dateVal.toDate()
-        : new Date(dateVal as string);
+      const dateVal = event.date as unknown as
+        | { seconds: number }
+        | { toDate: () => Date }
+        | string;
+      const d =
+        typeof dateVal === "object" && dateVal !== null && "seconds" in dateVal
+          ? new Date(dateVal.seconds * 1000)
+          : typeof dateVal === "object" &&
+              dateVal !== null &&
+              "toDate" in dateVal
+            ? dateVal.toDate()
+            : new Date(dateVal as string);
       return new Intl.DateTimeFormat("es-AR", {
         weekday: "long",
         day: "numeric",
@@ -85,18 +99,18 @@ export default function EventosPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-16">
       <div className="text-center mb-16">
-        <h1 className="font-serif text-display text-gema-black">Eventos</h1>
-        <p className="text-body text-gema-gray-500 mt-4">
+        <h1 className="font-display text-hero text-ink">Eventos</h1>
+        <p className="text-lede text-ink-soft mt-4">
           Charlas, presentaciones y encuentros
         </p>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-gema-gray-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-ink-soft" />
         </div>
       ) : events.length === 0 ? (
-        <div className="text-center py-12 text-gema-gray-500">
+        <div className="text-center py-12 text-ink-soft">
           No hay eventos próximos
         </div>
       ) : (
@@ -106,13 +120,13 @@ export default function EventosPage() {
             const isBuying = buyingId === event.id;
 
             return (
-              <div key={event.id} className="border border-gema-gray-200 p-8">
+              <div key={event.id} className="border border-rule p-8">
                 <div className="space-y-4">
-                  <h2 className="font-serif text-heading-xl text-gema-black">
+                  <h2 className="font-display text-h2 text-ink">
                     {event.title}
                   </h2>
 
-                  <div className="flex flex-wrap gap-6 text-sm text-gema-gray-500">
+                  <div className="flex flex-wrap gap-6 text-sm text-ink-soft">
                     <span className="flex items-center gap-1.5">
                       <Calendar className="w-4 h-4" />
                       {formatEventDate(event)}
@@ -128,16 +142,20 @@ export default function EventosPage() {
                   </div>
 
                   {event.description && (
-                    <p className="text-body text-gema-gray-600">{event.description}</p>
+                    <p className="text-lede text-ink-soft">
+                      {event.description}
+                    </p>
                   )}
 
                   <div className="flex items-center gap-4 pt-2">
-                    <span className="text-heading-md font-serif text-gema-black">
+                    <span className="text-h3 font-display text-ink">
                       {formatCurrency(event.price)}
                     </span>
 
                     {soldOut ? (
-                      <span className="text-sm text-red-500 font-medium">Agotado</span>
+                      <span className="text-sm text-accent font-medium">
+                        Agotado
+                      </span>
                     ) : !isBuying ? (
                       <Button onClick={() => setBuyingId(event.id)}>
                         <Ticket className="w-4 h-4 mr-2" />
@@ -147,7 +165,7 @@ export default function EventosPage() {
                   </div>
 
                   {isBuying && !result?.success && (
-                    <div className="border-t border-gema-gray-100 pt-6 mt-4 space-y-4">
+                    <div className="border-t border-rule pt-6 mt-4 space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <Input
                           label="Email"
@@ -164,7 +182,7 @@ export default function EventosPage() {
                       </div>
 
                       {result?.error && (
-                        <p className="text-sm text-red-500">{result.error}</p>
+                        <p className="text-sm text-accent">{result.error}</p>
                       )}
 
                       <div className="flex flex-wrap gap-3">
@@ -197,7 +215,7 @@ export default function EventosPage() {
                   )}
 
                   {isBuying && result?.success && (
-                    <div className="border-t border-gema-gray-100 pt-6 mt-4">
+                    <div className="border-t border-rule pt-6 mt-4">
                       <div className="bg-green-50 border border-green-200 p-6 rounded text-center space-y-2">
                         <p className="text-green-800 font-semibold text-lg">
                           ¡Entrada comprada!
@@ -209,7 +227,8 @@ export default function EventosPage() {
                           {result.code}
                         </p>
                         <p className="text-green-600 text-sm">
-                          Revisá tu email ({buyerEmail}) — te enviamos la entrada con el QR.
+                          Revisá tu email ({buyerEmail}) — te enviamos la
+                          entrada con el QR.
                         </p>
                         <Button
                           variant="secondary"

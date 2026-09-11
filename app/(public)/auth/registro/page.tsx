@@ -52,12 +52,8 @@ export default function RegistroPage() {
     <div className="page-transition min-h-[70vh] flex items-center justify-center">
       <div className="w-full max-w-sm px-gutter">
         <div className="text-center mb-12">
-          <h1 className="font-serif text-heading-xl text-gema-black mb-2">
-            Crear cuenta
-          </h1>
-          <p className="text-body text-gema-gray-500">
-            Únete a la comunidad GEMA
-          </p>
+          <h1 className="font-display text-h2 text-ink mb-2">Crear cuenta</h1>
+          <p className="text-lede text-ink-soft">Únete a la comunidad GEMA</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -89,7 +85,7 @@ export default function RegistroPage() {
           />
 
           {(localError || error) && (
-            <p className="text-small text-red-500">{localError || error}</p>
+            <p className="text-meta text-accent">{localError || error}</p>
           )}
 
           <Button type="submit" loading={loading} className="w-full">
@@ -99,10 +95,10 @@ export default function RegistroPage() {
 
         <div className="relative my-8">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gema-gray-200" />
+            <div className="w-full border-t border-rule" />
           </div>
           <div className="relative flex justify-center">
-            <span className="bg-gema-white px-4 text-caption text-gema-gray-400">
+            <span className="bg-paper px-4 text-meta text-ink-soft">
               o continúa con
             </span>
           </div>
@@ -136,14 +132,14 @@ export default function RegistroPage() {
           Google
         </Button>
 
-        <p className="text-center mt-8 text-small text-gema-gray-500">
+        <p className="text-center mt-8 text-meta text-ink-soft">
           ¿Ya tienes cuenta?{" "}
-          <Link href="/auth/login" className="text-gema-black hover:underline">
+          <Link href="/auth/login" className="text-ink hover:underline">
             Iniciar sesión
           </Link>
         </p>
 
-        <p className="text-center mt-4 text-caption text-gema-gray-400">
+        <p className="text-center mt-4 text-meta text-ink-soft">
           Al crear una cuenta aceptas nuestros{" "}
           <Link href="/terminos" className="underline">
             términos de servicio

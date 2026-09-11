@@ -1,11 +1,11 @@
 import { Metadata } from "next";
 import { getBooks } from "@/server/actions/books";
-import { BookGrid } from "@/components/books/BookGrid";
-import { CatalogFilters } from "@/components/books/CatalogFilters";
+import { CatalogBrowser } from "@/components/books/CatalogBrowser";
 
 export const metadata: Metadata = {
   title: "Catálogo",
-  description: "Explora nuestra colección de libros de pensamiento contemporáneo, humanidades y ciencias sociales.",
+  description:
+    "Explora nuestra colección de libros de pensamiento contemporáneo, humanidades y ciencias sociales.",
 };
 
 export default async function CatalogoPage() {
@@ -14,24 +14,22 @@ export default async function CatalogoPage() {
   return (
     <div className="page-transition">
       {/* Header */}
-      <section className="section-sm border-b border-gema-gray-100">
+      <section className="section-sm pt-16 md:pt-20 pb-10">
         <div className="max-w-content mx-auto">
-          <h1 className="font-serif text-display text-gema-black mb-4">
-            Catálogo
+          <p className="eyebrow">Catálogo</p>
+          <h1 className="font-display text-hero text-ink mt-5 max-w-[16ch] text-balance">
+            Todos los títulos
           </h1>
-          <p className="text-body-lg text-gema-gray-500 max-w-xl">
+          <p className="text-lede text-ink-soft mt-5 max-w-[46ch]">
             Explora nuestra colección de títulos en formato digital e impreso.
           </p>
         </div>
       </section>
 
       {/* Filters & Grid */}
-      <section className="section">
+      <section className="section-sm pt-0">
         <div className="max-w-content mx-auto">
-          <CatalogFilters />
-          <div className="mt-12">
-            <BookGrid books={books} columns={3} />
-          </div>
+          <CatalogBrowser books={books} />
         </div>
       </section>
     </div>

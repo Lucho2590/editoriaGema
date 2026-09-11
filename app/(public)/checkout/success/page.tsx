@@ -44,31 +44,37 @@ export default async function CheckoutSuccessPage({
         clearCartWhenCompleted
       />
       <section className="section min-h-[60vh] flex items-center">
-        <div className="max-w-prose mx-auto text-center">
+        <div className="max-w-readable mx-auto text-center">
           <div className="mb-8">
-            <variant.Icon className={`w-16 h-16 ${variant.iconClass} mx-auto`} strokeWidth={1.5} />
+            <variant.Icon
+              className={`w-16 h-16 ${variant.iconClass} mx-auto`}
+              strokeWidth={1.5}
+            />
           </div>
 
-          <h1 className="font-serif text-heading-xl text-gema-black mb-4">{variant.title}</h1>
+          <h1 className="font-display text-h2 text-ink mb-4">
+            {variant.title}
+          </h1>
 
-          <p className="text-body-lg text-gema-gray-600 mb-4">{variant.message}</p>
+          <p className="text-lede text-ink-soft mb-4">{variant.message}</p>
 
-          <p className="text-small text-gema-gray-500 mb-8">
-            Total: <span className="text-gema-black">{formatCurrency(order.total)}</span> · Orden #
-            {order.id.slice(0, 8)}
+          <p className="text-meta text-ink-soft mb-8">
+            Total:{" "}
+            <span className="text-ink">{formatCurrency(order.total)}</span> ·
+            Orden #{order.id.slice(0, 8)}
           </p>
 
           {variant.showLibraryCta && order.hasDigitalItems && (
-            <p className="text-body text-gema-gray-500 mb-12">
-              Si compraste libros digitales, recibirás un email separado con los enlaces de descarga
-              en los próximos minutos.
+            <p className="text-lede text-ink-soft mb-12">
+              Si compraste libros digitales, recibirás un email separado con los
+              enlaces de descarga en los próximos minutos.
             </p>
           )}
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/catalogo"
-              className="inline-block px-8 py-4 border border-gema-black text-gema-black text-small tracking-wide hover:bg-gema-black hover:text-gema-white transition-colors duration-300"
+              className="inline-block px-8 py-4 border border-ink text-ink text-meta tracking-wide hover:bg-ink hover:text-paper transition-colors duration-300"
             >
               Seguir explorando
             </Link>
@@ -85,7 +91,8 @@ function pickVariant(status: string) {
       Icon: CheckCircle,
       iconClass: "text-green-600",
       title: "¡Gracias por tu compra!",
-      message: "Tu pedido fue procesado correctamente. Recibirás un email de confirmación.",
+      message:
+        "Tu pedido fue procesado correctamente. Recibirás un email de confirmación.",
       showLibraryCta: true,
     };
   }
@@ -101,7 +108,7 @@ function pickVariant(status: string) {
   }
   return {
     Icon: AlertCircle,
-    iconClass: "text-red-500",
+    iconClass: "text-accent",
     title: "No pudimos procesar tu pago",
     message: "Si pensás que esto es un error, escribinos y lo revisamos.",
     showLibraryCta: false,
@@ -112,18 +119,21 @@ function MissingOrderFallback() {
   return (
     <div className="page-transition">
       <section className="section min-h-[60vh] flex items-center">
-        <div className="max-w-prose mx-auto text-center">
-          <AlertCircle className="w-16 h-16 text-gema-gray-400 mx-auto mb-8" strokeWidth={1.5} />
-          <h1 className="font-serif text-heading-xl text-gema-black mb-4">
+        <div className="max-w-readable mx-auto text-center">
+          <AlertCircle
+            className="w-16 h-16 text-ink-soft mx-auto mb-8"
+            strokeWidth={1.5}
+          />
+          <h1 className="font-display text-h2 text-ink mb-4">
             No encontramos tu orden
           </h1>
-          <p className="text-body-lg text-gema-gray-600 mb-8">
-            Si pagaste con MercadoPago, revisá tu email — te enviamos la confirmación apenas se
-            acredite el pago.
+          <p className="text-lede text-ink-soft mb-8">
+            Si pagaste con MercadoPago, revisá tu email — te enviamos la
+            confirmación apenas se acredite el pago.
           </p>
           <Link
             href="/catalogo"
-            className="inline-block px-8 py-4 border border-gema-black text-gema-black text-small tracking-wide hover:bg-gema-black hover:text-gema-white transition-colors duration-300"
+            className="inline-block px-8 py-4 border border-ink text-ink text-meta tracking-wide hover:bg-ink hover:text-paper transition-colors duration-300"
           >
             Volver al catálogo
           </Link>

@@ -37,37 +37,43 @@ export default async function CheckoutPendingPage({
         />
       )}
       <section className="section min-h-[60vh] flex items-center">
-        <div className="max-w-prose mx-auto text-center">
+        <div className="max-w-readable mx-auto text-center">
           <div className="mb-8">
-            <Clock className="w-16 h-16 text-amber-500 mx-auto" strokeWidth={1.5} />
+            <Clock
+              className="w-16 h-16 text-amber-500 mx-auto"
+              strokeWidth={1.5}
+            />
           </div>
 
-          <h1 className="font-serif text-heading-xl text-gema-black mb-4">
-            {isTransfer ? "Estamos verificando tu transferencia" : "Pago pendiente"}
+          <h1 className="font-display text-h2 text-ink mb-4">
+            {isTransfer
+              ? "Estamos verificando tu transferencia"
+              : "Pago pendiente"}
           </h1>
 
-          <p className="text-body-lg text-gema-gray-600 mb-4">
+          <p className="text-lede text-ink-soft mb-4">
             {isTransfer
               ? "Recibimos tus datos. En cuanto confirmemos la acreditación bancaria vas a recibir un email."
               : "Si elegiste pagar por Rapipago, transferencia o cualquier método offline, todavía estamos esperando la confirmación de MercadoPago."}
           </p>
 
           {order && (
-            <p className="text-small text-gema-gray-500 mb-4">
-              Total: <span className="text-gema-black">{formatCurrency(order.total)}</span> · Orden
-              #{order.id.slice(0, 8)}
+            <p className="text-meta text-ink-soft mb-4">
+              Total:{" "}
+              <span className="text-ink">{formatCurrency(order.total)}</span> ·
+              Orden #{order.id.slice(0, 8)}
             </p>
           )}
 
-          <p className="text-body text-gema-gray-500 mb-12">
-            Esta página se actualiza automáticamente cuando llega la confirmación. También recibirás
-            un email cuando se acredite.
+          <p className="text-lede text-ink-soft mb-12">
+            Esta página se actualiza automáticamente cuando llega la
+            confirmación. También recibirás un email cuando se acredite.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/catalogo"
-              className="inline-block px-8 py-4 border border-gema-black text-gema-black text-small tracking-wide hover:bg-gema-black hover:text-gema-white transition-colors duration-300"
+              className="inline-block px-8 py-4 border border-ink text-ink text-meta tracking-wide hover:bg-ink hover:text-paper transition-colors duration-300"
             >
               Seguir explorando
             </Link>

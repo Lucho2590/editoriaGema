@@ -4,18 +4,48 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  /* Fonts */
-  --font-editorial: "Playfair Display", Georgia, serif;
-  --font-body: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  /* ==========================================================================
+     TIPOGRAFÍAS
+     Dos familias, no tres. Los valores los inyecta next/font desde layout.tsx.
+     ========================================================================== */
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+  /* --font-ui y no --font-sans: pisar --font-sans cambiaría la fuente de
+     TODO el proyecto, incluido /admin (preflight la aplica en <html>) y el
+     .font-sans que tiene Button. Se aplica a mano en (public)/layout.tsx. */
+  --font-ui:
+    var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Se conserva tal cual estaba: /admin usa font-mono en 5 lugares
+     (IDs de pedido, CBU) y no tiene por qué cambiar de fuente. */
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
 
-  /* Editorial color palette */
+  /* ==========================================================================
+     PALETA — sitio público
+
+     Nada es gris puro ni blanco puro: toda la escala se deriva de la tinta
+     cálida. Eso da la sensación de papel sin teñir el fondo. Contraste
+     verificado contra --paper: ink 17.68:1, ink-soft 7.58:1, accent 5.80:1.
+     ========================================================================== */
+  --color-paper: #fbfaf6;
+  --color-paper-warm: #f2efe8;
+  --color-ink: #171310;
+  --color-ink-soft: #57504a;
+  --color-rule: #e4dfd5;
+  --color-accent: #b3361f;
+
+  /* Sobre superficie oscura (footer, CTA de cierre): ink-soft da 2.33:1 y no
+     sirve. Este es el apagado legible, 8.67:1 sobre --color-ink. */
+  --color-paper-muted: #b8b1a4;
+
+  /* ==========================================================================
+     PALETA NEUTRA HEREDADA — la usa /admin y las primitivas de components/ui.
+     NO TOCAR: hay ~346 referencias en app/(admin)/**.
+     ========================================================================== */
   --color-gema-black: #0a0a0a;
   --color-gema-white: #fafafa;
   --color-gema-cream: #f5f3ef;
   --color-gema-sand: #e8e4dd;
 
-  /* Gray scale */
   --color-gema-gray-50: #f7f7f7;
   --color-gema-gray-100: #e3e3e3;
   --color-gema-gray-200: #c8c8c8;
@@ -27,63 +57,67 @@
   --color-gema-gray-800: #383838;
   --color-gema-gray-900: #171717;
 
-  /* Custom font sizes */
-  --font-size-display-xl: 6rem;
-  --font-size-display-xl--line-height: 1;
-  --font-size-display-xl--letter-spacing: -0.02em;
+  /* ==========================================================================
+     ESCALA TIPOGRÁFICA — namespace --text-*, que es el correcto en Tailwind v4.
 
-  --font-size-display-lg: 4.5rem;
-  --font-size-display-lg--line-height: 1.05;
-  --font-size-display-lg--letter-spacing: -0.02em;
+     Acá vivía un bloque --font-size-* que NO generaba una sola línea de CSS
+     (namespace equivocado), y otro --width-* igual. O sea que text-heading-xl,
+     text-body, text-caption y max-w-content nunca hicieron nada, y font-serif
+     nunca resolvió a Playfair.
 
-  --font-size-display: 3.5rem;
-  --font-size-display--line-height: 1.1;
-  --font-size-display--letter-spacing: -0.01em;
+     Los nombres de abajo NO colisionan con los viejos a propósito:
+     app/(admin)/** usa esas clases ~202 veces y se ve como se ve HOY
+     justamente porque no generan nada. Revivirlas cambiaría todo el panel de
+     golpe. Ver nota al pie.
+     ========================================================================== */
+  --text-hero: clamp(2.5rem, 5.2vw, 3.75rem);
+  --text-hero--line-height: 1.1;
+  --text-hero--letter-spacing: -0.02em;
 
-  --font-size-heading-xl: 2.5rem;
-  --font-size-heading-xl--line-height: 1.2;
-  --font-size-heading-xl--letter-spacing: -0.01em;
+  --text-h2: clamp(1.75rem, 2.6vw, 2.25rem);
+  --text-h2--line-height: 1.18;
+  --text-h2--letter-spacing: -0.015em;
 
-  --font-size-heading-lg: 2rem;
-  --font-size-heading-lg--line-height: 1.25;
+  --text-h3: 1.5rem;
+  --text-h3--line-height: 1.25;
+  --text-h3--letter-spacing: -0.01em;
 
-  --font-size-heading: 1.5rem;
-  --font-size-heading--line-height: 1.3;
+  --text-h4: 1.1875rem;
+  --text-h4--line-height: 1.3;
 
-  --font-size-body-lg: 1.125rem;
-  --font-size-body-lg--line-height: 1.6;
+  --text-lede: 1.125rem;
+  --text-lede--line-height: 1.6;
 
-  --font-size-body: 1rem;
-  --font-size-body--line-height: 1.7;
+  --text-prose: 1.0625rem;
+  --text-prose--line-height: 1.75;
 
-  --font-size-small: 0.875rem;
-  --font-size-small--line-height: 1.5;
+  --text-meta: 0.9375rem;
+  --text-meta--line-height: 1.55;
 
-  --font-size-caption: 0.75rem;
-  --font-size-caption--line-height: 1.4;
-  --font-size-caption--letter-spacing: 0.02em;
+  --text-eyebrow: 0.6875rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.2em;
 
-  /* Custom spacing */
-  --spacing-section: 8rem;
+  /* ==========================================================================
+     ESPACIADO Y ANCHOS — namespace --container-*, el correcto en v4.
+     ========================================================================== */
+  --spacing-section: 6.5rem;
   --spacing-section-sm: 4rem;
   --spacing-gutter: 2rem;
   --spacing-gutter-sm: 1rem;
 
-  /* Custom max widths */
-  --width-content: 72rem;
-  --width-prose: 42rem;
-  --width-narrow: 32rem;
+  --container-content: 70rem;
+  --container-readable: 40rem;
+  /* max-w-prose es una utilidad estática de Tailwind (65ch) y NO se puede
+     pisar con --container-prose. Por eso existe max-w-readable. */
 
-  /* Custom animations */
   --animate-fade-in: fadeIn 0.6s ease-out forwards;
   --animate-fade-up: fadeUp 0.6s ease-out forwards;
   --animate-slide-in: slideIn 0.4s ease-out forwards;
 
-  /* Transition durations */
   --duration-400: 400ms;
   --duration-600: 600ms;
 
-  /* shadcn/ui theme variables */
   --radius: 0.5rem;
 }
 
@@ -118,14 +152,10 @@
   }
 }
 
-/* Base styles */
 @layer base {
   :root {
-    --font-editorial: "Playfair Display", Georgia, serif;
-    --font-body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-mono: "JetBrains Mono", "Fira Code", monospace;
-
-    /* shadcn/ui CSS variables */
+    /* shadcn/ui CSS variables — no las consume nadie hoy, quedan por si se
+       incorpora algún componente de shadcn que las espere. */
     --background: 0 0% 100%;
     --foreground: 0 0% 4%;
     --card: 0 0% 100%;
@@ -145,11 +175,6 @@
     --border: 0 0% 90%;
     --input: 0 0% 90%;
     --ring: 0 0% 4%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
   }
 
   html {
@@ -161,22 +186,35 @@
     color: var(--color-gema-black);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-feature-settings: "kern" 1, "liga" 1;
+    font-feature-settings:
+      "kern" 1,
+      "liga" 1;
   }
 
   ::selection {
-    background-color: var(--color-gema-black);
-    color: var(--color-gema-white);
+    background-color: var(--color-ink);
+    color: var(--color-paper);
   }
 
-  /* Smooth page transitions */
   .page-transition {
     animation: fadeIn 0.4s ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @layer components {
-  /* Editorial section spacing */
   .section {
     padding-top: var(--spacing-section);
     padding-bottom: var(--spacing-section);
@@ -191,20 +229,26 @@
     padding-right: var(--spacing-gutter);
   }
 
-  /* Container */
-  .container-content {
-    max-width: var(--width-content);
-    margin-left: auto;
-    margin-right: auto;
-    padding-left: var(--spacing-gutter);
-    padding-right: var(--spacing-gutter);
+  /* Volanta: el patrón de eyebrow editorial. Sans en mayúscula con tracking
+     alto — no hace falta una familia monoespaciada para esto. */
+  .eyebrow {
+    font-size: var(--text-eyebrow);
+    line-height: var(--text-eyebrow--line-height);
+    letter-spacing: var(--text-eyebrow--letter-spacing);
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--color-accent);
   }
 
-  /* Prose styling for long-form content */
+  .eyebrow-muted {
+    color: var(--color-ink-soft);
+  }
+
+  /* Prosa larga — /manifiesto */
   .prose-editorial {
-    font-size: var(--font-size-body-lg);
-    line-height: var(--font-size-body-lg--line-height);
-    color: var(--color-gema-gray-700);
+    font-size: var(--text-prose);
+    line-height: var(--text-prose--line-height);
+    color: var(--color-ink-soft);
   }
 
   .prose-editorial p {
@@ -212,56 +256,91 @@
   }
 
   .prose-editorial h2 {
-    font-family: var(--font-editorial);
-    font-size: var(--font-size-heading-xl);
-    line-height: var(--font-size-heading-xl--line-height);
-    color: var(--color-gema-black);
-    margin-top: 3rem;
-    margin-bottom: 1.5rem;
+    font-family: var(--font-display);
+    font-size: var(--text-h2);
+    line-height: var(--text-h2--line-height);
+    letter-spacing: var(--text-h2--letter-spacing);
+    color: var(--color-ink);
+    margin-top: 3.5rem;
+    margin-bottom: 1.25rem;
   }
 
   .prose-editorial h3 {
-    font-family: var(--font-editorial);
-    font-size: var(--font-size-heading-lg);
-    line-height: var(--font-size-heading-lg--line-height);
-    color: var(--color-gema-black);
-    margin-top: 2rem;
+    font-family: var(--font-display);
+    font-size: var(--text-h3);
+    line-height: var(--text-h3--line-height);
+    color: var(--color-ink);
+    margin-top: 2.5rem;
     margin-bottom: 1rem;
   }
 
   .prose-editorial blockquote {
-    border-left: 2px solid var(--color-gema-gray-200);
-    padding-left: 1.5rem;
-    margin-top: 2rem;
-    margin-bottom: 2rem;
+    border-left: 1px solid var(--color-accent);
+    padding-left: 1.75rem;
+    margin: 2.5rem 0;
+    font-family: var(--font-display);
     font-style: italic;
-    color: var(--color-gema-gray-600);
+    font-size: var(--text-h3);
+    line-height: 1.4;
+    color: var(--color-ink);
   }
 
   .prose-editorial a {
-    color: var(--color-gema-black);
+    color: var(--color-accent);
     text-decoration: underline;
     text-underline-offset: 4px;
     transition: color 0.3s;
   }
 
   .prose-editorial a:hover {
-    color: var(--color-gema-gray-600);
+    color: var(--color-ink);
   }
 
   .prose-editorial ul,
   .prose-editorial ol {
     margin-bottom: 1.5rem;
-    padding-left: 1.5rem;
+    padding-left: 1.25rem;
   }
 
   .prose-editorial li {
     margin-bottom: 0.5rem;
   }
+  .prose-editorial li::marker {
+    color: var(--color-accent);
+  }
+}
+
+/* ============================================================================
+   PUENTE PARA LAS PRIMITIVAS COMPARTIDAS
+
+   components/ui/* (Input, Label, Select, Dialog) los usa también /admin, así
+   que siguen escritos con las clases viejas —text-caption, text-body,
+   text-heading— que no generan CSS. En el panel eso está bien: es el look que
+   tiene hoy. En el sitio público deja las etiquetas de formulario del tamaño
+   del cuerpo, que se ve mal.
+
+   Estas reglas le dan tamaño a esas clases SOLO dentro de .theme-editorial.
+   Funciona porque el atributo class sigue conteniendo el nombre aunque
+   Tailwind no haya emitido la utilidad. /admin no pasa por acá.
+   ============================================================================ */
+.theme-editorial .text-caption {
+  font-size: var(--text-eyebrow);
+  line-height: var(--text-eyebrow--line-height);
+  letter-spacing: var(--text-eyebrow--letter-spacing);
+}
+
+.theme-editorial .text-body {
+  font-size: var(--text-lede);
+  line-height: var(--text-lede--line-height);
+}
+
+.theme-editorial .text-heading {
+  font-family: var(--font-display);
+  font-size: var(--text-h3);
+  line-height: var(--text-h3--line-height);
 }
 
 @layer utilities {
-  /* Hide scrollbar but allow scrolling */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
@@ -271,8 +350,21 @@
     display: none;
   }
 
-  /* Text balance for headings */
   .text-balance {
     text-wrap: balance;
   }
 }
+
+/* ============================================================================
+   NOTA PARA QUIEN VENGA DESPUÉS
+
+   app/(admin)/** usa text-small, text-caption, text-body, text-heading* y
+   font-serif ~230 veces. Ninguna de esas clases genera CSS (ver arriba), y el
+   panel se ve como se ve por eso. Si algún día las revivís bajo --text-*,
+   todo /admin cambia de tamaños de golpe. Está bueno hacerlo, pero es un
+   trabajo aparte con su propia revisión visual, no un efecto colateral.
+
+   Por la misma razón components/ui/* sigue usando los tokens gema-*: son
+   compartidos con el panel. La diferencia entre gema-black #0a0a0a y la tinta
+   cálida #171310 es imperceptible, así que no vale la pena el riesgo.
+   ============================================================================ */
