@@ -361,3 +361,39 @@ export async function toggleBookPublished(id: string, published: boolean): Promi
 export async function toggleBookFeatured(id: string, featured: boolean): Promise<{ success: boolean; error?: string }> {
   return updateBook(id, { featured });
 }
+
+const COVER_MAX_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Fetch a stored cover so the admin cropper can draw it on a canvas. Storage
+ * download URLs are not CORS-enabled, so the browser can't read their pixels
+ * directly.
+ */
+export async function getCoverImageForEditing(
+  url: string
+): Promise<{ success: boolean; dataUrl?: string; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  try {
+    if (new URL(url).hostname !== "firebasestorage.googleapis.com") {
+      return { success: false, error: "URL de imagen no permitida" };
+    }
+
+    const response = await fetch(url);
+    const contentType = response.headers.get("content-type") || "";
+    if (!response.ok || !contentType.startsWith("image/")) {
+      return { success: false, error: "No se pudo obtener la imagen" };
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length > COVER_MAX_BYTES) {
+      return { success: false, error: "La imagen es demasiado grande" };
+    }
+
+    return { success: true, dataUrl: `data:${contentType};base64,${buffer.toString("base64")}` };
+  } catch (error) {
+    console.error("Failed to fetch cover for editing:", error);
+    return { success: false, error: "No se pudo obtener la imagen" };
+  }
+}

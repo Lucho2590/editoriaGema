@@ -28,9 +28,10 @@ export function BookCard({ book, index = 0 }: BookCardProps) {
       style={{ animationDelay: `${index * 0.08}s` }}
     >
       <Link href={`/libro/${book.slug}`} className="block">
-        <div className="relative aspect-[3/4] mb-5 overflow-hidden">
+        <div className="relative aspect-[7/10] mb-5 overflow-hidden">
           <Image
             src={book.coverImage}
+            quality={90}
             alt={`Tapa de ${book.title}`}
             fill
             className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"

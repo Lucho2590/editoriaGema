@@ -9,9 +9,9 @@ import { BookInput } from "@/types";
 import { slugify } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { ArrowLeft, Upload, X } from "lucide-react";
+import { ArrowLeft, Upload } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
+import { CoverImageField } from "@/components/admin/CoverImageField";
 
 export default function NuevoLibroPage() {
   const router = useRouter();
@@ -34,16 +34,10 @@ export default function NuevoLibroPage() {
 
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverSourceFile, setCoverSourceFile] = useState<File | null>(null);
+  const [coverSourcePreview, setCoverSourcePreview] = useState<string | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [epubFile, setEpubFile] = useState<File | null>(null);
-
-  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setCoverFile(file);
-      setCoverPreview(URL.createObjectURL(file));
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,6 +57,14 @@ export default function NuevoLibroPage() {
       const coverRef = ref(storage, `covers/${slug}-${Date.now()}`);
       await uploadBytes(coverRef, coverFile);
       const coverImage = await getDownloadURL(coverRef);
+
+      // Keep the uncropped original so the cover can be re-framed later
+      let coverSourceImage: string | undefined;
+      if (coverSourceFile) {
+        const sourceRef = ref(storage, `covers/${slug}-original-${Date.now()}`);
+        await uploadBytes(sourceRef, coverSourceFile);
+        coverSourceImage = await getDownloadURL(sourceRef);
+      }
 
       // Upload PDF if provided
       let pdfFileUrl: string | undefined;
@@ -85,6 +87,7 @@ export default function NuevoLibroPage() {
         ...formData,
         slug,
         coverImage,
+        coverSourceImage,
         pdfFileUrl,
         epubFileUrl,
       } as BookInput);
@@ -162,37 +165,26 @@ export default function NuevoLibroPage() {
           <div className="space-y-4">
             <h2 className="font-serif text-heading text-gema-black">Portada</h2>
 
-            {coverPreview ? (
-              <div className="relative w-40 h-56">
-                <Image
-                  src={coverPreview}
-                  alt="Vista previa"
-                  fill
-                  className="object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCoverFile(null);
-                    setCoverPreview(null);
-                  }}
-                  className="absolute -top-2 -right-2 p-1 bg-gema-black text-gema-white rounded-full"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center w-40 h-56 border-2 border-dashed border-gema-gray-200 cursor-pointer hover:border-gema-gray-400 transition-colors">
-                <Upload className="w-8 h-8 text-gema-gray-400 mb-2" />
-                <span className="text-caption text-gema-gray-400">Subir imagen</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCoverChange}
-                  className="hidden"
-                />
-              </label>
-            )}
+            <CoverImageField
+              preview={coverPreview}
+              source={coverSourcePreview}
+              onChange={(file, previewUrl, original) => {
+                setCoverFile(file);
+                setCoverPreview(previewUrl);
+                if (original) {
+                  setCoverSourceFile(original);
+                  setCoverSourcePreview(URL.createObjectURL(original));
+                }
+              }}
+              onClear={() => {
+                setCoverFile(null);
+                setCoverPreview(null);
+                setCoverSourceFile(null);
+                setCoverSourcePreview(null);
+              }}
+              title={formData.title}
+              author={formData.author}
+            />
           </div>
 
           {/* Formats & Pricing */}

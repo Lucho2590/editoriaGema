@@ -143,7 +143,7 @@ export default function AdminLibrosPage() {
                 <tr key={book.id} className="border-b border-gema-gray-50 hover:bg-gema-gray-50/50">
                   <td className="py-4 px-6">
                     <div className="flex items-center gap-4">
-                      <div className="relative w-10 h-14 bg-gema-gray-100 flex-shrink-0">
+                      <div className="relative w-10 aspect-[7/10] bg-gema-gray-100 flex-shrink-0">
                         {book.coverImage && (
                           <Image
                             src={book.coverImage}

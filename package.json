@@ -34,6 +34,7 @@
     "qrcode": "^1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "react-easy-crop": "^6.2.3",
     "react-email": "^5.2.10",
     "react-hook-form": "^7.71.2",
     "resend": "^3.2.0",
