@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, getDocs, orderBy, query } from "firebase/firestore";
-import { ExternalLink, X, Eye } from "lucide-react";
+import {
+  ExternalLink,
+  X,
+  Eye,
+  Send,
+  CheckCircle2,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { db } from "@/lib/firebase";
 import { Order } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -40,18 +49,32 @@ function formatTime(d: Order["createdAt"]): string {
 }
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/Select";
 import {
   confirmTransferOrder,
   rejectTransferOrder,
+  resendOrderDownloads,
 } from "@/server/actions/orders";
 
 type Filter = "all" | "completed" | "pending" | "transfer";
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
 export default function AdminPedidosPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Filter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZE_OPTIONS[0]);
+  const [resendTarget, setResendTarget] = useState<Order | null>(null);
 
   const loadOrders = async () => {
     try {
@@ -88,6 +111,14 @@ export default function AdminPedidosPage() {
     });
   }, [orders, filter]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / pageSize));
+  // Clamp instead of storing, so a reload that shrinks the list never leaves an empty page
+  const currentPage = Math.min(page, totalPages);
+  const pagedOrders = filteredOrders.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
   const selected = useMemo(
     () => orders.find((o) => o.id === selectedId) || null,
     [orders, selectedId]
@@ -114,7 +145,10 @@ export default function AdminPedidosPage() {
         {(["all", "completed", "pending", "transfer"] as const).map((f) => (
           <button
             key={f}
-            onClick={() => setFilter(f)}
+            onClick={() => {
+              setFilter(f);
+              setPage(1);
+            }}
             className={cn(
               "text-small px-4 py-2 transition-colors",
               filter === f
@@ -163,10 +197,13 @@ export default function AdminPedidosPage() {
                 <th className="text-left py-4 px-6 text-caption uppercase tracking-wider text-gema-gray-400">
                   Fecha
                 </th>
+                <th className="text-left py-4 px-6 text-caption uppercase tracking-wider text-gema-gray-400">
+                  Acciones
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((order) => (
+              {pagedOrders.map((order) => (
                 <tr
                   key={order.id}
                   onClick={() => setSelectedId(order.id)}
@@ -207,11 +244,88 @@ export default function AdminPedidosPage() {
                       </span>
                     </span>
                   </td>
+                  <td className="py-4 px-6">
+                    {order.paymentStatus === "completed" && order.hasDigitalItems && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          // The row itself opens the detail drawer
+                          e.stopPropagation();
+                          setResendTarget(order);
+                        }}
+                        title="Reenviar libros"
+                        aria-label="Reenviar libros"
+                        className="p-1 text-gema-gray-500 hover:text-gema-black transition-colors"
+                      >
+                        <Send size={18} />
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {filteredOrders.length > PAGE_SIZE_OPTIONS[0] && (
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gema-gray-100">
+              <div className="flex items-center gap-6">
+                <p className="text-small text-gema-gray-500">
+                  Mostrando {(currentPage - 1) * pageSize + 1}–
+                  {Math.min(currentPage * pageSize, filteredOrders.length)} de{" "}
+                  {filteredOrders.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-small text-gema-gray-500">Por página</span>
+                  <Select
+                    value={String(pageSize)}
+                    onValueChange={(value) => {
+                      setPageSize(Number(value));
+                      setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 w-20 px-3 py-1 text-small">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((size) => (
+                        <SelectItem key={size} value={String(size)}>
+                          {size}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1 text-small text-gema-gray-500 hover:text-gema-black transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  <ChevronLeft size={16} />
+                  Anterior
+                </button>
+                <span className="text-small text-gema-gray-500">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1 text-small text-gema-gray-500 hover:text-gema-black transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  Siguiente
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+      )}
+
+      {resendTarget && (
+        <ResendDownloadsModal
+          order={resendTarget}
+          onClose={() => setResendTarget(null)}
+        />
       )}
 
       {selected && (
@@ -482,6 +596,102 @@ function OrderDetailDrawer({
         </div>
       </aside>
     </div>
+  );
+}
+
+function ResendDownloadsModal({
+  order,
+  onClose,
+}: {
+  order: Order;
+  onClose: () => void;
+}) {
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  const digitalItems = order.items.filter(
+    (item) => item.format === "pdf" || item.format === "epub"
+  );
+
+  const handleResend = async () => {
+    setState("sending");
+    setError(null);
+    try {
+      const res = await resendOrderDownloads(order.id);
+      if (!res.success) throw new Error(res.error || "No se pudo reenviar");
+      setState("sent");
+    } catch (err) {
+      setState("error");
+      setError(err instanceof Error ? err.message : "No se pudo reenviar");
+    }
+  };
+
+  return (
+    <Modal
+      isOpen
+      onClose={() => state !== "sending" && onClose()}
+      title="Reenviar libros"
+      size="sm"
+    >
+      {state === "sent" ? (
+        <div className="space-y-6">
+          <div className="flex gap-3 items-start">
+            <CheckCircle2 size={20} className="text-green-600 shrink-0 mt-0.5" />
+            <p className="text-small text-gema-gray-700">
+              Listo. Los links de descarga se enviaron a{" "}
+              <span className="text-gema-black">{order.userEmail}</span>.
+            </p>
+          </div>
+          <Button onClick={onClose} className="w-full">
+            Cerrar
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="space-y-3 text-small text-gema-gray-700">
+            <p>
+              Se va a enviar un email con links de descarga nuevos (válidos por 7
+              días) a <span className="text-gema-black">{order.userEmail}</span>.
+            </p>
+            <ul className="border border-gema-gray-100 divide-y divide-gema-gray-100">
+              {digitalItems.map((item, i) => (
+                <li key={i} className="flex justify-between gap-4 px-3 py-2">
+                  <span className="text-gema-black truncate">{item.bookTitle}</span>
+                  <span className="text-gema-gray-500 shrink-0">
+                    {item.format.toUpperCase()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {state === "error" && error && (
+            <div className="flex gap-2 items-start bg-red-50 text-red-700 px-3 py-2 text-small">
+              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <Button
+              variant="secondary"
+              onClick={onClose}
+              disabled={state === "sending"}
+              className="flex-1"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleResend}
+              loading={state === "sending"}
+              className="flex-1"
+            >
+              {state === "error" ? "Reintentar" : "Reenviar"}
+            </Button>
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 }
 

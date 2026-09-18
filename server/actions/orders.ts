@@ -25,7 +25,7 @@ import {
 } from "./emails";
 import { createPayment } from "@/lib/payments";
 import { getTransferSettings } from "./settings";
-import { getOrderById, updateOrderPayment } from "@/lib/orders/fulfillment";
+import { getOrderById, resendDownloadEmail, updateOrderPayment } from "@/lib/orders/fulfillment";
 import { assertAdmin } from "@/lib/auth/session";
 
 const ORDERS_COLLECTION = "orders";
@@ -369,6 +369,18 @@ export async function confirmTransferOrder(
   const result = await updateOrderPayment(orderId, `transfer_${orderId}`, "completed");
   if (!result.success) return { success: false, error: result.error };
   return { success: true };
+}
+
+/**
+ * Re-send the download email of a paid digital order (admin only).
+ */
+export async function resendOrderDownloads(
+  orderId: string
+): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  return resendDownloadEmail(orderId);
 }
 
 export async function rejectTransferOrder(
