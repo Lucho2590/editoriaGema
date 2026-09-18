@@ -16,7 +16,7 @@ interface AdminNotificationEmailProps {
 }
 
 export function AdminNotificationEmail({ order }: AdminNotificationEmailProps) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gema-editorial.com";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://editorialgema.com";
 
   return (
     <Html>

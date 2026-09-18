@@ -106,17 +106,26 @@ async function processCompletedOrder(orderId: string): Promise<void> {
 
       await adminDb.collection(ORDERS_COLLECTION).doc(orderId).update({ downloadLinks });
 
-      // Send download email
-      await sendDownloadEmail(order.userEmail, order, downloadLinks);
-
       // Update user library
       if (order.userId) {
         await updateUserLibrary(order.userId, order, downloadLinks);
       }
+
+      // Send download email
+      const downloadResult = await sendDownloadEmail(order.userEmail, order, downloadLinks);
+      if (!downloadResult.success) {
+        // Leave emailSent false so the next payment update retries delivery
+        console.error(`Download email failed for order ${orderId}:`, downloadResult.error);
+        return;
+      }
     }
 
     // Send confirmation email
-    await sendPurchaseConfirmation(order.userEmail, order);
+    const confirmationResult = await sendPurchaseConfirmation(order.userEmail, order);
+    if (!confirmationResult.success) {
+      console.error(`Confirmation email failed for order ${orderId}:`, confirmationResult.error);
+      return;
+    }
 
     // Notify admin
     await sendAdminNotification(order);
@@ -217,9 +226,13 @@ async function updateUserLibrary(userId: string, order: Order, downloadLinks: Do
     const libraryDoc = await libraryRef.get();
 
     if (libraryDoc.exists) {
-      const currentPurchases = libraryDoc.data()?.purchases || [];
+      // Replace any entry from a previous fulfillment attempt of this same order
+      const currentPurchases: typeof purchase[] = libraryDoc.data()?.purchases || [];
+      const otherPurchases = currentPurchases.filter(
+        (p) => !(p.orderId === order.id && p.bookId === item.bookId && p.format === item.format)
+      );
       await libraryRef.update({
-        purchases: [...currentPurchases, purchase],
+        purchases: [...otherPurchases, purchase],
       });
     } else {
       await libraryRef.set({

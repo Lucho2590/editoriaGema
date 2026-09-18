@@ -21,7 +21,7 @@ export function AdminInvitationEmail({
   displayName,
   resetPasswordLink,
 }: AdminInvitationEmailProps) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gema-editorial.com";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://editorialgema.com";
   const adminUrl = `${appUrl}/admin`;
 
   return (
@@ -78,13 +78,13 @@ export function AdminInvitationEmail({
           <Section style={footer}>
             <Text style={footerText}>
               ¿Preguntas? Escríbenos a{" "}
-              <Link href="mailto:contacto@gema-editorial.com" style={link}>
-                contacto@gema-editorial.com
+              <Link href="mailto:contacto@editorialgema.com" style={link}>
+                contacto@editorialgema.com
               </Link>
             </Text>
             <Text style={footerLinks}>
               <Link href={appUrl} style={link}>
-                gema-editorial.com
+                editorialgema.com
               </Link>
             </Text>
           </Section>
