@@ -11,7 +11,7 @@ import { TicketEmail } from "@/components/email/TicketEmail";
 import { generateQRDataUrl } from "@/lib/qr";
 import { formatDate } from "@/lib/utils";
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@gema-editorial.com";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@editorialgema.com";
 
 /**
  * Send welcome email to new user

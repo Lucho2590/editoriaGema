@@ -69,9 +69,10 @@ export function BookDetail({ book }: BookDetailProps) {
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-start">
       {/* Tapa — desnuda, sin marco */}
       <div className="lg:col-span-5">
-        <div className="relative aspect-[3/4] w-full max-w-sm mx-auto lg:mx-0 lg:max-w-none animate-slide-in">
+        <div className="relative aspect-[7/10] w-full max-w-sm mx-auto lg:mx-0 lg:max-w-none animate-slide-in">
           <Image
             src={book.coverImage}
+            quality={90}
             alt={`Tapa de ${book.title}`}
             fill
             className="object-cover"

@@ -106,17 +106,26 @@ async function processCompletedOrder(orderId: string): Promise<void> {
 
       await adminDb.collection(ORDERS_COLLECTION).doc(orderId).update({ downloadLinks });
 
-      // Send download email
-      await sendDownloadEmail(order.userEmail, order, downloadLinks);
-
       // Update user library
       if (order.userId) {
         await updateUserLibrary(order.userId, order, downloadLinks);
       }
+
+      // Send download email
+      const downloadResult = await sendDownloadEmail(order.userEmail, order, downloadLinks);
+      if (!downloadResult.success) {
+        // Leave emailSent false so the next payment update retries delivery
+        console.error(`Download email failed for order ${orderId}:`, downloadResult.error);
+        return;
+      }
     }
 
     // Send confirmation email
-    await sendPurchaseConfirmation(order.userEmail, order);
+    const confirmationResult = await sendPurchaseConfirmation(order.userEmail, order);
+    if (!confirmationResult.success) {
+      console.error(`Confirmation email failed for order ${orderId}:`, confirmationResult.error);
+      return;
+    }
 
     // Notify admin
     await sendAdminNotification(order);
@@ -129,6 +138,72 @@ async function processCompletedOrder(orderId: string): Promise<void> {
     }
   } catch (error) {
     console.error("Failed to process completed order:", error);
+  }
+}
+
+/**
+ * Re-send the download email of a paid order with freshly signed links (the
+ * previous ones may have expired). Also refreshes the links stored on the order
+ * and in the buyer's library. Does not touch payment status or `emailSent`.
+ * Callers are responsible for authorization.
+ */
+export async function resendDownloadEmail(
+  orderId: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!isAdminReady || !adminDb) {
+    return { success: false, error: "Firebase Admin no está configurado" };
+  }
+
+  try {
+    const order = await getOrderById(orderId);
+    if (!order) return { success: false, error: "Orden no encontrada" };
+    if (order.paymentStatus !== "completed") {
+      return { success: false, error: "La orden no está pagada" };
+    }
+    if (!order.hasDigitalItems) {
+      return { success: false, error: "La orden no tiene libros digitales" };
+    }
+
+    // Explain which book blocks the resend instead of a generic failure
+    for (const item of order.items) {
+      if (item.format !== "pdf" && item.format !== "epub") continue;
+      const title = item.bookTitle.trim();
+      const bookDoc = await adminDb.collection("books").doc(item.bookId).get();
+      if (!bookDoc.exists) {
+        return { success: false, error: `El libro "${title}" ya no existe en el catálogo.` };
+      }
+      const fileUrl = item.format === "pdf" ? bookDoc.data()?.pdfFileUrl : bookDoc.data()?.epubFileUrl;
+      if (!fileUrl) {
+        return {
+          success: false,
+          error: `El libro "${title}" no tiene cargado el archivo ${item.format.toUpperCase()}.`,
+        };
+      }
+    }
+
+    const downloadLinks = await generateDownloadLinks(order.items);
+    if (downloadLinks.length === 0) {
+      return { success: false, error: "No se pudieron generar los links de descarga." };
+    }
+
+    await adminDb
+      .collection(ORDERS_COLLECTION)
+      .doc(orderId)
+      .update({ downloadLinks, updatedAt: Timestamp.now() });
+
+    if (order.userId) {
+      await updateUserLibrary(order.userId, order, downloadLinks);
+    }
+
+    const result = await sendDownloadEmail(order.userEmail, order, downloadLinks);
+    if (!result.success) {
+      console.error(`Resend of download email failed for order ${orderId}:`, result.error);
+      return { success: false, error: "No se pudo enviar el email" };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to resend download email:", error);
+    return { success: false, error: "No se pudo reenviar" };
   }
 }
 
@@ -217,9 +292,13 @@ async function updateUserLibrary(userId: string, order: Order, downloadLinks: Do
     const libraryDoc = await libraryRef.get();
 
     if (libraryDoc.exists) {
-      const currentPurchases = libraryDoc.data()?.purchases || [];
+      // Replace any entry from a previous fulfillment attempt of this same order
+      const currentPurchases: typeof purchase[] = libraryDoc.data()?.purchases || [];
+      const otherPurchases = currentPurchases.filter(
+        (p) => !(p.orderId === order.id && p.bookId === item.bookId && p.format === item.format)
+      );
       await libraryRef.update({
-        purchases: [...currentPurchases, purchase],
+        purchases: [...otherPurchases, purchase],
       });
     } else {
       await libraryRef.set({

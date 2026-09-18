@@ -208,7 +208,7 @@ export function CheckoutForm({
                     className="flex gap-6 pb-6 border-b border-rule"
                   >
                     {/* Cover */}
-                    <div className="relative w-20 h-28 bg-paper-warm flex-shrink-0">
+                    <div className="relative w-20 aspect-[7/10] bg-paper-warm flex-shrink-0">
                       <Image
                         src={item.book.coverImage}
                         alt={item.book.title}

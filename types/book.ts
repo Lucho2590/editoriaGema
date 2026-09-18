@@ -14,6 +14,8 @@ export interface Book {
   description: string;
   year: number;
   coverImage: string;
+  /** Original upload the cover was framed from; re-framing starts from here */
+  coverSourceImage?: string;
   formats: BookFormats;
   pricePdf: number;
   priceEpub: number;
@@ -34,6 +36,8 @@ export interface BookInput {
   description: string;
   year: number;
   coverImage: string;
+  /** Original upload the cover was framed from; re-framing starts from here */
+  coverSourceImage?: string;
   formats: BookFormats;
   pricePdf: number;
   priceEpub: number;

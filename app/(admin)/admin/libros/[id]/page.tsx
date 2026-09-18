@@ -8,9 +8,9 @@ import { getBookById, updateBook, deleteBook } from "@/server/actions/books";
 import { Book, BookInput } from "@/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { ArrowLeft, Upload, X, Trash2 } from "lucide-react";
+import { ArrowLeft, Upload, Trash2 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
+import { CoverImageField } from "@/components/admin/CoverImageField";
 
 export default function EditarLibroPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -38,6 +38,8 @@ export default function EditarLibroPage({ params }: { params: Promise<{ id: stri
   const [originalBook, setOriginalBook] = useState<Book | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverSourceFile, setCoverSourceFile] = useState<File | null>(null);
+  const [coverSourcePreview, setCoverSourcePreview] = useState<string | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [epubFile, setEpubFile] = useState<File | null>(null);
 
@@ -64,6 +66,7 @@ export default function EditarLibroPage({ params }: { params: Promise<{ id: stri
           featured: book.featured,
           published: book.published,
           coverImage: book.coverImage,
+          coverSourceImage: book.coverSourceImage,
           pdfFileUrl: book.pdfFileUrl,
           epubFileUrl: book.epubFileUrl,
         });
@@ -79,14 +82,6 @@ export default function EditarLibroPage({ params }: { params: Promise<{ id: stri
     loadBook();
   }, [id, router]);
 
-  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setCoverFile(file);
-      setCoverPreview(URL.createObjectURL(file));
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -98,6 +93,7 @@ export default function EditarLibroPage({ params }: { params: Promise<{ id: stri
       }
 
       let coverImage = formData.coverImage;
+      let coverSourceImage = formData.coverSourceImage;
       let pdfFileUrl = formData.pdfFileUrl;
       let epubFileUrl = formData.epubFileUrl;
 
@@ -106,6 +102,15 @@ export default function EditarLibroPage({ params }: { params: Promise<{ id: stri
         const coverRef = ref(storage, `covers/${formData.slug}-${Date.now()}`);
         await uploadBytes(coverRef, coverFile);
         coverImage = await getDownloadURL(coverRef);
+
+        if (coverSourceFile) {
+          const sourceRef = ref(storage, `covers/${formData.slug}-original-${Date.now()}`);
+          await uploadBytes(sourceRef, coverSourceFile);
+          coverSourceImage = await getDownloadURL(sourceRef);
+        } else if (!coverSourceImage) {
+          // Covers uploaded before framing existed were stored uncropped
+          coverSourceImage = originalBook?.coverImage;
+        }
       }
 
       // Upload new PDF if provided
@@ -125,6 +130,7 @@ export default function EditarLibroPage({ params }: { params: Promise<{ id: stri
       const result = await updateBook(id, {
         ...formData,
         coverImage,
+        coverSourceImage,
         pdfFileUrl,
         epubFileUrl,
       } as BookInput);
@@ -267,50 +273,35 @@ export default function EditarLibroPage({ params }: { params: Promise<{ id: stri
           <div className="space-y-4">
             <h2 className="font-serif text-heading text-gema-black">Portada</h2>
 
-            {coverPreview ? (
-              <div className="relative w-40 h-56">
-                <Image
-                  src={coverPreview}
-                  alt="Vista previa"
-                  fill
-                  className="object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCoverFile(null);
-                    setCoverPreview(originalBook?.coverImage || null);
-                  }}
-                  className="absolute -top-2 -right-2 p-1 bg-gema-black text-gema-white rounded-full"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ) : (
-              <label className="flex flex-col items-center justify-center w-40 h-56 border-2 border-dashed border-gema-gray-200 cursor-pointer hover:border-gema-gray-400 transition-colors">
-                <Upload className="w-8 h-8 text-gema-gray-400 mb-2" />
-                <span className="text-caption text-gema-gray-400">Subir imagen</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCoverChange}
-                  className="hidden"
-                />
-              </label>
-            )}
-
-            {coverPreview && !coverFile && (
-              <label className="inline-flex items-center gap-2 text-small text-gema-gray-600 cursor-pointer hover:text-gema-black">
-                <Upload size={16} />
-                Cambiar imagen
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleCoverChange}
-                  className="hidden"
-                />
-              </label>
-            )}
+            <CoverImageField
+              preview={coverPreview}
+              source={
+                coverSourcePreview ||
+                originalBook?.coverSourceImage ||
+                originalBook?.coverImage ||
+                null
+              }
+              onChange={(file, previewUrl, original) => {
+                setCoverFile(file);
+                setCoverPreview(previewUrl);
+                if (original) {
+                  setCoverSourceFile(original);
+                  setCoverSourcePreview(URL.createObjectURL(original));
+                }
+              }}
+              onClear={
+                coverFile
+                  ? () => {
+                      setCoverFile(null);
+                      setCoverPreview(originalBook?.coverImage || null);
+                      setCoverSourceFile(null);
+                      setCoverSourcePreview(null);
+                    }
+                  : undefined
+              }
+              title={formData.title}
+              author={formData.author}
+            />
           </div>
 
           {/* Formats & Pricing */}

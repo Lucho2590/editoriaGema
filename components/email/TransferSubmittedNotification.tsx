@@ -16,7 +16,7 @@ interface TransferSubmittedNotificationProps {
 }
 
 export function TransferSubmittedNotification({ order }: TransferSubmittedNotificationProps) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://gema-editorial.com";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://editorialgema.com";
   const td = order.transferDetails;
 
   return (

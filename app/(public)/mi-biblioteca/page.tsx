@@ -134,7 +134,7 @@ export default function MiBibliotecaPage() {
               >
                 <div className="bg-paper-warm p-6">
                   {/* Cover */}
-                  <div className="relative aspect-[3/4] mb-6 bg-paper">
+                  <div className="relative aspect-[7/10] mb-6 bg-paper">
                     {purchase.bookCover && (
                       <Image
                         src={purchase.bookCover}

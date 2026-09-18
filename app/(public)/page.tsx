@@ -46,9 +46,10 @@ export default async function HomePage() {
                 href={`/libro/${destacado.slug}`}
                 className="md:col-span-5 lg:col-span-4 block group"
               >
-                <div className="relative aspect-[3/4] overflow-hidden">
+                <div className="relative aspect-[7/10] overflow-hidden">
                   <Image
                     src={destacado.coverImage}
+                    quality={90}
                     alt={`Tapa de ${destacado.title}`}
                     fill
                     priority
