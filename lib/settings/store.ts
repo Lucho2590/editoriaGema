@@ -6,6 +6,7 @@ import { Timestamp } from "firebase-admin/firestore";
 export const SETTINGS_COLLECTION = "settings";
 export const MP_DOC_ID = "mercadopago";
 export const TRANSFER_DOC_ID = "transfer";
+export const NOTIFICATIONS_DOC_ID = "notifications";
 
 export function serializeTimestamp(ts: unknown): string {
   if (!ts) return new Date().toISOString();

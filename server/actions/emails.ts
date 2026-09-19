@@ -4,14 +4,10 @@ import { sendEmail } from "@/lib/resend";
 import { Order, DownloadLink } from "@/types";
 import { PurchaseConfirmationEmail } from "@/components/email/PurchaseConfirmation";
 import { DownloadDeliveryEmail } from "@/components/email/DownloadDelivery";
-import { AdminNotificationEmail } from "@/components/email/AdminNotification";
-import { TransferSubmittedNotification } from "@/components/email/TransferSubmittedNotification";
 import { WelcomeEmail } from "@/components/email/WelcomeEmail";
 import { TicketEmail } from "@/components/email/TicketEmail";
 import { generateQRDataUrl } from "@/lib/qr";
 import { formatDate } from "@/lib/utils";
-
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@editorialgema.com";
 
 /**
  * Send welcome email to new user
@@ -75,28 +71,5 @@ export async function sendTicketEmail(
       price: ticket.price,
       qrDataUrl,
     }),
-  });
-}
-
-/**
- * Send admin notification for new order
- */
-export async function sendAdminNotification(order: Order) {
-  return sendEmail({
-    to: ADMIN_EMAIL,
-    subject: `Nueva venta - $${order.total} - GEMA`,
-    react: AdminNotificationEmail({ order }),
-  });
-}
-
-/**
- * Notify admin that a customer submitted bank transfer details and is waiting
- * for manual confirmation.
- */
-export async function sendTransferSubmittedNotification(order: Order) {
-  return sendEmail({
-    to: ADMIN_EMAIL,
-    subject: `Transferencia pendiente - #${order.id.slice(-6).toUpperCase()} - GEMA`,
-    react: TransferSubmittedNotification({ order }),
   });
 }
