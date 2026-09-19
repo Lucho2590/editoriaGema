@@ -15,6 +15,7 @@ import {
   ScanLine,
   CreditCard,
   Landmark,
+  Bell,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -32,6 +33,7 @@ const navigation = [
   { href: "/admin/validar-entrada", label: "Validar entrada", icon: ScanLine },
   { href: "/admin/configuracion", label: "MercadoPago", icon: CreditCard },
   { href: "/admin/transferencia", label: "Transferencia", icon: Landmark },
+  { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell },
 ];
 
 export default function AdminLayout({

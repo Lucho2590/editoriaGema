@@ -20,7 +20,7 @@ export const emailConfig = {
 };
 
 export interface SendEmailParams {
-  to: string;
+  to: string | string[];
   subject: string;
   react: React.ReactElement;
 }

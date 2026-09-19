@@ -20,9 +20,8 @@ import { Order, OrderInput, OrderItem, PaymentStatus, DownloadLink } from "@/typ
 import {
   sendPurchaseConfirmation,
   sendDownloadEmail,
-  sendAdminNotification,
-  sendTransferSubmittedNotification,
 } from "./emails";
+import { notifyTransferToVerify } from "@/lib/notifications/admin";
 import { createPayment } from "@/lib/payments";
 import { getTransferSettings } from "./settings";
 import { getOrderById, resendDownloadEmail, updateOrderPayment } from "@/lib/orders/fulfillment";
@@ -342,7 +341,7 @@ export async function submitTransferDetails(
 
     try {
       const updated = await getOrder(orderId);
-      if (updated) await sendTransferSubmittedNotification(updated);
+      if (updated) await notifyTransferToVerify(updated);
     } catch (notifyErr) {
       console.error("Failed to notify admin about transfer submission:", notifyErr);
     }

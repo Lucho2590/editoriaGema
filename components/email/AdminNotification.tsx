@@ -11,12 +11,19 @@ import {
 import { Order } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 
+export const PAYMENT_METHOD_LABELS: Record<Order["paymentProvider"], string> = {
+  mercadopago: "MercadoPago",
+  transfer: "Transferencia",
+  stripe: "Stripe",
+};
+
 interface AdminNotificationEmailProps {
   order: Order;
 }
 
 export function AdminNotificationEmail({ order }: AdminNotificationEmailProps) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://editorialgema.com";
+  const method = PAYMENT_METHOD_LABELS[order.paymentProvider] || order.paymentProvider;
 
   return (
     <Html>
@@ -28,7 +35,7 @@ export function AdminNotificationEmail({ order }: AdminNotificationEmailProps) {
           </Section>
 
           <Section style={content}>
-            <Text style={heading}>Nueva Venta</Text>
+            <Text style={heading}>Nueva venta por {method}</Text>
 
             <Section style={statsRow}>
               <Section style={statBox}>
@@ -40,7 +47,7 @@ export function AdminNotificationEmail({ order }: AdminNotificationEmailProps) {
                 <Text style={statLabel}>Items</Text>
               </Section>
               <Section style={statBox}>
-                <Text style={statValue}>{order.paymentProvider.toUpperCase()}</Text>
+                <Text style={statValue}>{method}</Text>
                 <Text style={statLabel}>Método</Text>
               </Section>
             </Section>
@@ -90,7 +97,7 @@ export function AdminNotificationEmail({ order }: AdminNotificationEmailProps) {
 
             <Section style={actionSection}>
               <Link href={`${appUrl}/admin/pedidos`} style={actionButton}>
-                Ver en Dashboard
+                Ver pedido
               </Link>
             </Section>
           </Section>

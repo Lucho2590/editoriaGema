@@ -29,7 +29,14 @@ export function TransferSubmittedNotification({ order }: TransferSubmittedNotifi
           </Section>
 
           <Section style={content}>
-            <Text style={heading}>Transferencia pendiente de validación</Text>
+            <Text style={heading}>Nueva venta por transferencia</Text>
+
+            <Section style={alertBox}>
+              <Text style={alertText}>
+                Tenés que verificar que el dinero haya llegado a la cuenta antes de
+                aprobar el pedido. Hasta que lo apruebes, el comprador no recibe sus libros.
+              </Text>
+            </Section>
 
             <Section style={detailsSection}>
               <Text style={detailLabel}>Pedido</Text>
@@ -71,7 +78,7 @@ export function TransferSubmittedNotification({ order }: TransferSubmittedNotifi
 
             <Section style={actionSection}>
               <Link href={`${appUrl}/admin/pedidos`} style={actionButton}>
-                Revisar en el panel
+                Verificar en el admin
               </Link>
             </Section>
           </Section>
@@ -172,4 +179,19 @@ const actionButton = {
   textDecoration: "none",
   textTransform: "uppercase" as const,
   borderRadius: "2px",
+};
+
+const alertBox = {
+  backgroundColor: "#3a2e0b",
+  border: "1px solid #8a6d1a",
+  borderRadius: "2px",
+  padding: "12px 16px",
+  marginBottom: "24px",
+};
+
+const alertText = {
+  fontSize: "13px",
+  lineHeight: "1.5",
+  color: "#f5d77a",
+  margin: "0",
 };

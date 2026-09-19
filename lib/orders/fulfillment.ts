@@ -11,11 +11,8 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, Timestamp as ClientTimestamp } from "firebase/firestore";
 import { Timestamp } from "firebase-admin/firestore";
 import { Order, OrderItem, PaymentStatus, DownloadLink } from "@/types";
-import {
-  sendPurchaseConfirmation,
-  sendDownloadEmail,
-  sendAdminNotification,
-} from "@/server/actions/emails";
+import { sendPurchaseConfirmation, sendDownloadEmail } from "@/server/actions/emails";
+import { notifyNewSale } from "@/lib/notifications/admin";
 
 const ORDERS_COLLECTION = "orders";
 const USER_LIBRARY_COLLECTION = "user_library";
@@ -127,8 +124,11 @@ async function processCompletedOrder(orderId: string): Promise<void> {
       return;
     }
 
-    // Notify admin
-    await sendAdminNotification(order);
+    // Transfers are approved by hand in the admin, so there's nothing to tell
+    // the team; they were already asked to verify it (notifyTransferToVerify)
+    if (order.paymentProvider !== "transfer") {
+      await notifyNewSale(order);
+    }
 
     // Mark email as sent
     if (isAdminReady && adminDb) {

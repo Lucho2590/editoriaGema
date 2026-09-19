@@ -5,8 +5,14 @@ import { db } from "@/lib/firebase";
 import { doc, deleteDoc, setDoc, Timestamp as ClientTimestamp } from "firebase/firestore";
 import { Timestamp } from "firebase-admin/firestore";
 import { assertAdmin } from "@/lib/auth/session";
+import { sendEmail } from "@/lib/resend";
+import { emailSchema } from "@/lib/validations";
+import type { NotificationSettingsRaw } from "@/lib/notifications/admin";
+import { AdminNotificationEmail } from "@/components/email/AdminNotification";
+import type { Order } from "@/types";
 import {
   MP_DOC_ID,
+  NOTIFICATIONS_DOC_ID,
   SETTINGS_COLLECTION,
   TRANSFER_DOC_ID,
   nowTimestamp,
@@ -324,4 +330,127 @@ export async function disableTransfer(updatedBy?: string): Promise<{ success: bo
     console.error("Failed to disable transfer:", error);
     return { success: false, error: "No se pudo deshabilitar" };
   }
+}
+
+// ---------------------------------------------------------------------------
+// Notificaciones al equipo — quién recibe los avisos de ventas
+// ---------------------------------------------------------------------------
+
+const MAX_NOTIFICATION_RECIPIENTS = 20;
+
+export interface NotificationSettings {
+  recipients: string[];
+  notifySales: boolean;
+  notifyTransfers: boolean;
+  /** ADMIN_EMAIL, which receives the notices while `recipients` is empty */
+  fallbackEmail: string | null;
+  updatedAt: string | null;
+  updatedBy?: string;
+}
+
+export async function getNotificationSettings(): Promise<NotificationSettings | null> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return null;
+
+  try {
+    const raw = await readSettingsDoc<NotificationSettingsRaw>(NOTIFICATIONS_DOC_ID);
+    return {
+      recipients: raw?.recipients ?? [],
+      notifySales: raw?.notifySales ?? true,
+      notifyTransfers: raw?.notifyTransfers ?? true,
+      fallbackEmail: process.env.ADMIN_EMAIL || null,
+      updatedAt: raw?.updatedAt ? serializeTimestamp(raw.updatedAt) : null,
+      updatedBy: raw?.updatedBy,
+    };
+  } catch (error) {
+    console.error("Failed to get notification settings:", error);
+    return null;
+  }
+}
+
+export async function saveNotificationSettings(input: {
+  recipients: string[];
+  notifySales: boolean;
+  notifyTransfers: boolean;
+  updatedBy?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  const recipients = [
+    ...new Set(input.recipients.map((email) => email.trim().toLowerCase()).filter(Boolean)),
+  ];
+  const invalid = recipients.find((email) => !emailSchema.safeParse(email).success);
+  if (invalid) return { success: false, error: `"${invalid}" no es un email válido` };
+  if (recipients.length > MAX_NOTIFICATION_RECIPIENTS) {
+    return {
+      success: false,
+      error: `Se pueden cargar hasta ${MAX_NOTIFICATION_RECIPIENTS} destinatarios`,
+    };
+  }
+
+  try {
+    await writeSettingsDoc(NOTIFICATIONS_DOC_ID, {
+      recipients,
+      notifySales: input.notifySales,
+      notifyTransfers: input.notifyTransfers,
+      updatedAt: nowTimestamp(),
+      ...(input.updatedBy ? { updatedBy: input.updatedBy } : {}),
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to save notification settings:", error);
+    return { success: false, error: "No se pudo guardar la configuración" };
+  }
+}
+
+/**
+ * Sends a sample "new sale" notice to the saved recipients so the admin can
+ * check they actually arrive.
+ */
+export async function sendTestNotification(): Promise<{ success: boolean; error?: string }> {
+  const auth = await assertAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  const raw = await readSettingsDoc<NotificationSettingsRaw>(NOTIFICATIONS_DOC_ID);
+  const recipients = raw?.recipients ?? [];
+  if (recipients.length === 0) {
+    return { success: false, error: "Guardá al menos un destinatario primero" };
+  }
+
+  const now = new Date();
+  const timestamp = { seconds: Math.floor(now.getTime() / 1000), nanoseconds: 0, toDate: () => now };
+  const sampleOrder: Order = {
+    id: "prueba-000000",
+    userEmail: "comprador@ejemplo.com",
+    items: [
+      {
+        bookId: "prueba",
+        bookTitle: "Libro de prueba",
+        bookAuthor: "GEMA Editorial",
+        format: "epub",
+        price: 10000,
+        quantity: 1,
+      },
+    ],
+    subtotal: 10000,
+    shippingCost: 0,
+    total: 10000,
+    paymentProvider: "mercadopago",
+    paymentStatus: "completed",
+    orderStatus: "paid",
+    hasDigitalItems: true,
+    hasPrintItems: false,
+    emailSent: false,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  const result = await sendEmail({
+    to: recipients,
+    subject: "[Prueba] Nueva venta por MercadoPago — GEMA",
+    react: AdminNotificationEmail({ order: sampleOrder }),
+  });
+  if (!result.success) return { success: false, error: "No se pudo enviar el email de prueba" };
+  return { success: true };
 }
