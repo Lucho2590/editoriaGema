@@ -20,6 +20,7 @@ import { Timestamp } from "firebase-admin/firestore";
 import { Book, BookInput } from "@/types";
 import { slugify } from "@/lib/utils";
 import { assertAdmin } from "@/lib/auth/session";
+import { logAudit } from "@/lib/audit/log";
 
 const BOOKS_COLLECTION = "books";
 
@@ -222,6 +223,7 @@ export async function createBook(input: BookInput): Promise<{ success: boolean; 
     }
 
     revalidateBookPaths(slug);
+    await logAudit(auth.user, "book.created", { type: "book", id: bookId, label: input.title });
     return { success: true, bookId };
   } catch (error) {
     console.error("Failed to create book:", error);
@@ -262,6 +264,19 @@ export async function updateBook(
 
     revalidateBookPaths(previous?.slug, input.slug);
     revalidatePath(`/admin/libros/${id}`);
+
+    const changedFields = Object.entries(input)
+      .filter(([key, value]) => {
+        const before = previous?.[key as keyof Book];
+        return JSON.stringify(before) !== JSON.stringify(value);
+      })
+      .map(([key]) => key);
+    await logAudit(
+      auth.user,
+      "book.updated",
+      { type: "book", id, label: input.title || previous?.title },
+      { changedFields }
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to update book:", error);
@@ -286,6 +301,7 @@ export async function deleteBook(id: string): Promise<{ success: boolean; error?
     }
 
     revalidateBookPaths(previous?.slug);
+    await logAudit(auth.user, "book.deleted", { type: "book", id, label: previous?.title });
     return { success: true };
   } catch (error) {
     console.error("Failed to delete book:", error);

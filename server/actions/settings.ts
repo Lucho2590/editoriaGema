@@ -6,6 +6,7 @@ import { doc, deleteDoc, setDoc, Timestamp as ClientTimestamp } from "firebase/f
 import { Timestamp } from "firebase-admin/firestore";
 import { assertAdmin } from "@/lib/auth/session";
 import { sendEmail } from "@/lib/resend";
+import { logAudit } from "@/lib/audit/log";
 import { emailSchema } from "@/lib/validations";
 import type { NotificationSettingsRaw } from "@/lib/notifications/admin";
 import { AdminNotificationEmail } from "@/components/email/AdminNotification";
@@ -116,6 +117,12 @@ export async function saveMercadoPagoCredentials(input: {
       updatedAt: nowTimestamp(),
       ...(input.updatedBy ? { updatedBy: input.updatedBy } : {}),
     });
+    await logAudit(
+      auth.user,
+      "settings.mercadopago_updated",
+      { type: "settings", id: "mercadopago", label: "MercadoPago" },
+      { mode: input.mode }
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to save MercadoPago credentials:", error);
@@ -145,6 +152,12 @@ export async function setMercadoPagoActiveMode(input: {
       updatedAt: nowTimestamp(),
       ...(input.updatedBy ? { updatedBy: input.updatedBy } : {}),
     });
+    await logAudit(
+      auth.user,
+      "settings.mercadopago_mode_changed",
+      { type: "settings", id: "mercadopago", label: "MercadoPago" },
+      { mode: input.mode }
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to set MercadoPago active mode:", error);
@@ -181,6 +194,12 @@ export async function clearMercadoPagoMode(input: {
         { merge: true }
       );
     }
+    await logAudit(
+      auth.user,
+      "settings.mercadopago_cleared",
+      { type: "settings", id: "mercadopago", label: "MercadoPago" },
+      { mode: input.mode }
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to clear MercadoPago mode:", error);
@@ -198,6 +217,11 @@ export async function disconnectMercadoPago(): Promise<{ success: boolean; error
     } else {
       await deleteDoc(doc(db, SETTINGS_COLLECTION, MP_DOC_ID));
     }
+    await logAudit(
+      auth.user,
+      "settings.mercadopago_disconnected",
+      { type: "settings", id: "mercadopago", label: "MercadoPago" }
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to disconnect MercadoPago:", error);
@@ -308,6 +332,19 @@ export async function saveTransferSettings(input: {
       updatedAt: nowTimestamp(),
       ...(input.updatedBy ? { updatedBy: input.updatedBy } : {}),
     });
+    await logAudit(
+      auth.user,
+      "settings.transfer_updated",
+      { type: "settings", id: "transfer", label: "Transferencia" },
+      {
+        enabled: input.enabled,
+        bankName: input.bankName,
+        accountHolder: input.accountHolder,
+        cbu: input.cbu,
+        alias: input.alias,
+        discountPercentage: input.discountPercentage,
+      }
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to save transfer settings:", error);
@@ -325,6 +362,12 @@ export async function disableTransfer(updatedBy?: string): Promise<{ success: bo
       updatedAt: nowTimestamp(),
       ...(updatedBy ? { updatedBy } : {}),
     });
+    await logAudit(
+      auth.user,
+      "settings.transfer_updated",
+      { type: "settings", id: "transfer", label: "Transferencia" },
+      { enabled: false }
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to disable transfer:", error);
@@ -397,6 +440,16 @@ export async function saveNotificationSettings(input: {
       updatedAt: nowTimestamp(),
       ...(input.updatedBy ? { updatedBy: input.updatedBy } : {}),
     });
+    await logAudit(
+      auth.user,
+      "settings.notifications_updated",
+      { type: "settings", id: "notifications", label: "Notificaciones" },
+      {
+        recipients,
+        notifySales: input.notifySales,
+        notifyTransfers: input.notifyTransfers,
+      }
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to save notification settings:", error);
