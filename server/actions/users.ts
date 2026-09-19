@@ -5,6 +5,7 @@ import { sendEmail } from "@/lib/resend";
 import { AdminInvitationEmail } from "@/components/email/AdminInvitation";
 import { FieldValue } from "firebase-admin/firestore";
 import { assertAdmin } from "@/lib/auth/session";
+import { logAudit } from "@/lib/audit/log";
 
 export interface CreateAdminInput {
   email: string;
@@ -108,6 +109,13 @@ export async function createAdminUser(
       // but log the error
     }
 
+    await logAudit(
+      auth.user,
+      "admin.invited",
+      { type: "user", id: userRecord.uid, label: email },
+      { invitationEmailSent: emailResult.success }
+    );
+
     return {
       success: true,
       userId: userRecord.uid,
@@ -189,6 +197,8 @@ export async function removeAdminPrivilege(userId: string) {
   }
 
   try {
+    const removed = await adminDb.collection("users").doc(userId).get();
+
     await adminDb.collection("users").doc(userId).update({
       isAdmin: false,
       updatedAt: FieldValue.serverTimestamp(),
@@ -198,6 +208,11 @@ export async function removeAdminPrivilege(userId: string) {
     // remaining lifetime with admin access.
     await adminAuth.revokeRefreshTokens(userId);
 
+    await logAudit(auth.user, "admin.removed", {
+      type: "user",
+      id: userId,
+      label: removed.data()?.email,
+    });
     return { success: true };
   } catch (error: any) {
     console.error("Error removing admin privilege:", error);
@@ -236,6 +251,9 @@ export async function resendAdminInvitation(
       }),
     });
 
+    if (emailResult.success) {
+      await logAudit(auth.user, "admin.invitation_resent", { type: "user", id: email, label: email });
+    }
     return emailResult;
   } catch (error: any) {
     console.error("Error resending invitation:", error);

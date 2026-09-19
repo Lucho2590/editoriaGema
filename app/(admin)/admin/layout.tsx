@@ -16,10 +16,12 @@ import {
   CreditCard,
   Landmark,
   Bell,
+  ScrollText,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAdminRole } from "@/components/admin/AdminRoleProvider";
 
 const SIDEBAR_STORAGE_KEY = "gema-admin-sidebar-collapsed";
 
@@ -34,6 +36,7 @@ const navigation = [
   { href: "/admin/configuracion", label: "MercadoPago", icon: CreditCard },
   { href: "/admin/transferencia", label: "Transferencia", icon: Landmark },
   { href: "/admin/notificaciones", label: "Notificaciones", icon: Bell },
+  { href: "/admin/auditoria", label: "Auditoría", icon: ScrollText, superadminOnly: true },
 ];
 
 export default function AdminLayout({
@@ -44,6 +47,7 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const { user, gemaUser, loading, isAdmin, signOut } = useAuth();
+  const { isSuperAdmin } = useAdminRole();
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -125,20 +129,22 @@ export default function AdminLayout({
         </div>
 
         <nav className="mt-8">
-          {navigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={collapsed ? item.label : undefined}
-              className={cn(
-                "flex items-center gap-3 py-3 text-small text-gema-gray-400 hover:text-gema-white hover:bg-gema-gray-900 transition-colors",
-                collapsed ? "justify-center px-4" : "px-6"
-              )}
-            >
-              <item.icon size={18} className="shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          ))}
+          {navigation
+            .filter((item) => !item.superadminOnly || isSuperAdmin)
+            .map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={collapsed ? item.label : undefined}
+                className={cn(
+                  "flex items-center gap-3 py-3 text-small text-gema-gray-400 hover:text-gema-white hover:bg-gema-gray-900 transition-colors",
+                  collapsed ? "justify-center px-4" : "px-6"
+                )}
+              >
+                <item.icon size={18} className="shrink-0" />
+                {!collapsed && <span>{item.label}</span>}
+              </Link>
+            ))}
         </nav>
 
         <div

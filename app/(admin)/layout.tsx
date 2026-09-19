@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { getSessionUser } from "@/lib/auth/session";
 import { isServerAuthConfigured, safeNextPath } from "@/lib/auth/config";
+import { AdminRoleProvider } from "@/components/admin/AdminRoleProvider";
 
 /**
  * Authoritative guard for /admin/**. Route groups are transparent for URLs but
@@ -19,7 +20,7 @@ export default async function AdminGroupLayout({
     console.warn(
       "[admin] FIREBASE_ADMIN_* not set — server-side admin guard disabled (dev only)"
     );
-    return <>{children}</>;
+    return <AdminRoleProvider isSuperAdmin>{children}</AdminRoleProvider>;
   }
 
   const requestHeaders = await headers();
@@ -33,7 +34,7 @@ export default async function AdminGroupLayout({
     redirect("/");
   }
 
-  return <>{children}</>;
+  return <AdminRoleProvider isSuperAdmin={user.isSuperAdmin}>{children}</AdminRoleProvider>;
 }
 
 /**

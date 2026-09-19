@@ -30,7 +30,9 @@ service cloud.firestore {
         (isAuthenticated() && resource.data.userEmail == request.auth.token.email);
       allow create: if true;
       allow update: if isAdmin();
-      allow delete: if isAdmin();
+      // Deleting orders is superadmin-only and goes through the server
+      // (deleteOrders), which also records it in the audit log.
+      allow delete: if false;
 
       // Webhook audit trail — only the server (Admin SDK) writes; admins can read for debugging
       match /events/{eventId} {
@@ -45,10 +47,15 @@ service cloud.firestore {
     }
 
     // Users collection
+    // Users can create and edit their own profile but never grant themselves
+    // admin: every admin check (rules and server) trusts `isAdmin`.
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) &&
+        (!('isAdmin' in request.resource.data) || request.resource.data.isAdmin == false);
+      allow update: if isAdmin() ||
+        (isOwner(userId) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin']));
       allow delete: if isAdmin();
     }
 
@@ -56,6 +63,11 @@ service cloud.firestore {
     match /user_library/{userId} {
       allow read: if isOwner(userId);
       allow write: if isAdmin(); // Only server can write
+    }
+
+    // Audit log — written and read only by the server (Admin SDK)
+    match /audit_logs/{logId} {
+      allow read, write: if false;
     }
 
     // Analytics events - anyone can write, only admin can read

@@ -25,7 +25,8 @@ import { notifyTransferToVerify } from "@/lib/notifications/admin";
 import { createPayment } from "@/lib/payments";
 import { getTransferSettings } from "./settings";
 import { getOrderById, resendDownloadEmail, updateOrderPayment } from "@/lib/orders/fulfillment";
-import { assertAdmin } from "@/lib/auth/session";
+import { assertAdmin, assertSuperAdmin } from "@/lib/auth/session";
+import { logAudit, orderLabel } from "@/lib/audit/log";
 
 const ORDERS_COLLECTION = "orders";
 const USER_LIBRARY_COLLECTION = "user_library";
@@ -367,6 +368,13 @@ export async function confirmTransferOrder(
 
   const result = await updateOrderPayment(orderId, `transfer_${orderId}`, "completed");
   if (!result.success) return { success: false, error: result.error };
+
+  await logAudit(
+    auth.user,
+    "order.transfer_confirmed",
+    { type: "order", id: orderId, label: orderLabel(orderId) },
+    { buyer: order.userEmail, total: order.total }
+  );
   return { success: true };
 }
 
@@ -379,7 +387,17 @@ export async function resendOrderDownloads(
   const auth = await assertAdmin();
   if (!auth.ok) return { success: false, error: auth.error };
 
-  return resendDownloadEmail(orderId);
+  const result = await resendDownloadEmail(orderId);
+  if (result.success) {
+    const order = await getOrderById(orderId);
+    await logAudit(
+      auth.user,
+      "order.downloads_resent",
+      { type: "order", id: orderId, label: orderLabel(orderId) },
+      { to: order?.userEmail }
+    );
+  }
+  return result;
 }
 
 export async function rejectTransferOrder(
@@ -408,6 +426,13 @@ export async function rejectTransferOrder(
     } else {
       await updateDoc(doc(db, ORDERS_COLLECTION, orderId), update);
     }
+
+    await logAudit(
+      auth.user,
+      "order.transfer_rejected",
+      { type: "order", id: orderId, label: orderLabel(orderId) },
+      { buyer: order.userEmail, total: order.total, reason: reason || undefined }
+    );
     return { success: true };
   } catch (error) {
     console.error("Failed to reject transfer order:", error);
@@ -415,3 +440,91 @@ export async function rejectTransferOrder(
   }
 }
 
+
+const MAX_ORDERS_PER_DELETE = 100;
+
+function toIso(value: unknown): string | undefined {
+  if (value && typeof value === "object" && "toDate" in value) {
+    return (value as { toDate: () => Date }).toDate().toISOString();
+  }
+  return undefined;
+}
+
+/**
+ * Permanently delete orders, e.g. test purchases that shouldn't count in the
+ * stats (superadmin only). Removes the order, its webhook events and the
+ * transfer receipt. A snapshot of each order is kept in the audit log.
+ * The buyer's library is left alone: books already delivered stay delivered.
+ */
+export async function deleteOrders(
+  orderIds: string[]
+): Promise<{ success: boolean; deleted: number; failed: { id: string; error: string }[]; error?: string }> {
+  const auth = await assertSuperAdmin();
+  if (!auth.ok) return { success: false, deleted: 0, failed: [], error: auth.error };
+
+  if (!isAdminReady || !adminDb) {
+    return { success: false, deleted: 0, failed: [], error: "Firebase Admin no está configurado" };
+  }
+
+  const ids = [...new Set(orderIds)];
+  if (ids.length === 0) return { success: false, deleted: 0, failed: [], error: "No hay pedidos seleccionados" };
+  if (ids.length > MAX_ORDERS_PER_DELETE) {
+    return {
+      success: false,
+      deleted: 0,
+      failed: [],
+      error: `Se pueden borrar hasta ${MAX_ORDERS_PER_DELETE} pedidos por vez`,
+    };
+  }
+
+  let deleted = 0;
+  const failed: { id: string; error: string }[] = [];
+
+  for (const id of ids) {
+    try {
+      const ref = adminDb.collection(ORDERS_COLLECTION).doc(id);
+      const snap = await ref.get();
+      if (!snap.exists) {
+        failed.push({ id, error: "No existe" });
+        continue;
+      }
+      const order = { id, ...snap.data() } as Order;
+
+      await adminDb.recursiveDelete(ref);
+
+      const receiptPath = order.transferDetails?.receiptStoragePath;
+      if (receiptPath && adminStorage) {
+        await adminStorage
+          .bucket()
+          .file(receiptPath)
+          .delete({ ignoreNotFound: true })
+          .catch((error) => console.error(`Failed to delete receipt of order ${id}:`, error));
+      }
+
+      await logAudit(
+        auth.user,
+        "order.deleted",
+        { type: "order", id, label: orderLabel(id) },
+        {
+          buyer: order.userEmail,
+          total: order.total,
+          paymentProvider: order.paymentProvider,
+          paymentStatus: order.paymentStatus,
+          items: order.items?.map((item) => ({
+            title: item.bookTitle?.trim(),
+            format: item.format,
+            price: item.price,
+            quantity: item.quantity,
+          })),
+          createdAt: toIso(order.createdAt),
+        }
+      );
+      deleted++;
+    } catch (error) {
+      console.error(`Failed to delete order ${id}:`, error);
+      failed.push({ id, error: "No se pudo borrar" });
+    }
+  }
+
+  return { success: failed.length === 0, deleted, failed };
+}
