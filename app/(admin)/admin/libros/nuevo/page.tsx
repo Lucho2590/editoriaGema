@@ -4,9 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { storage } from "@/lib/firebase";
-import { createBook } from "@/server/actions/books";
+import { createBook, getAvailableSlug } from "@/server/actions/books";
 import { BookInput } from "@/types";
-import { slugify } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ArrowLeft, Upload } from "lucide-react";
@@ -50,8 +49,8 @@ export default function NuevoLibroPage() {
         throw new Error("Por favor completa todos los campos requeridos");
       }
 
-      // Generate slug
-      const slug = slugify(formData.title);
+      // Resolve a unique slug before uploading, so files never land on another book's paths
+      const slug = await getAvailableSlug(formData.title);
 
       // Upload cover image
       const coverRef = ref(storage, `covers/${slug}-${Date.now()}`);
