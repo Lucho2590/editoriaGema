@@ -191,6 +191,28 @@ async function readBookById(id: string): Promise<Book | null> {
 }
 
 /**
+ * Return `base` if no book uses it yet, otherwise the first free `base-2`, `base-3`…
+ */
+async function findAvailableSlug(base: string): Promise<string> {
+  const root = base || "libro";
+  let candidate = root;
+  for (let n = 2; await getBookBySlug(candidate); n++) {
+    candidate = `${root}-${n}`;
+  }
+  return candidate;
+}
+
+/**
+ * Resolve a unique slug for a new book's title, so uploads can use it before the book exists.
+ */
+export async function getAvailableSlug(title: string): Promise<string> {
+  const auth = await assertAdmin();
+  if (!auth.ok) throw new Error(auth.error);
+
+  return findAvailableSlug(slugify(title));
+}
+
+/**
  * Create a new book
  */
 export async function createBook(input: BookInput): Promise<{ success: boolean; bookId?: string; error?: string }> {
@@ -198,11 +220,7 @@ export async function createBook(input: BookInput): Promise<{ success: boolean; 
   if (!auth.ok) return { success: false, error: auth.error };
 
   try {
-    const slug = input.slug || slugify(input.title);
-    const existing = await getBookBySlug(slug);
-    if (existing) {
-      return { success: false, error: "A book with this slug already exists" };
-    }
+    const slug = await findAvailableSlug(input.slug || slugify(input.title));
 
     const bookData = {
       ...input,
@@ -245,7 +263,7 @@ export async function updateBook(
     if (input.slug) {
       const existing = await getBookBySlug(input.slug);
       if (existing && existing.id !== id) {
-        return { success: false, error: "A book with this slug already exists" };
+        return { success: false, error: "Ya existe un libro con esa URL" };
       }
     }
 
